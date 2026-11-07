@@ -102,7 +102,7 @@ export const CIRCLE_LINK = {
  * stop at the first one that works. The count starts again once `lockMs`
  * passes without a wrong code.
  */
-export const CHECK_IN = {
+export const JOURNEY_CODES = {
   wrongTries: 5,
   lockMs: 5 * MINUTE_MS,
 } as const;

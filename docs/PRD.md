@@ -48,8 +48,9 @@ These patterns are from general knowledge and still need checking against source
 - Looks exactly like "I'm safe" in the UI, timing and network behaviour, while sending the alert quietly.
 
 ### Wrong codes on a journey
-- Five wrong codes on a journey (check-ins and ending it share the count) lock every code for 5 minutes, the safe code and the duress PIN included, so whoever holds the phone can't try all 10,000 codes and stop at the one that works. During a check-in they also count as no answer and alert the circle.
+- Five wrong codes on a journey (check-ins and ending it share the count) lock every code for 5 minutes, the safe code and the duress PIN included, so whoever holds the phone can't quickly try codes until one works. During a check-in they also count as no answer and alert the circle.
 - The count starts again once 5 minutes pass without a wrong code.
+- The lock outlasts a check-in's 3-minute window on purpose: a check-in that comes while the codes are locked can't be answered and alerts the circle.
 
 ### Forgot code ("Quên mã?")
 - During a journey there is no way to reset the codes. The code screen says so: let the time run out and Cage tells the circle (screen 26). Otherwise whoever holds the phone could take the codes over mid-journey.

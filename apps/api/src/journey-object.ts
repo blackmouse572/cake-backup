@@ -17,7 +17,7 @@ import {
 } from "@cage/shared";
 import { DurableObject } from "cloudflare:workers";
 import type { Bindings } from "./bindings";
-import { CHECK_IN } from "./constants";
+import { JOURNEY_CODES } from "./constants";
 import { messageSenderFor } from "./message-sender";
 import { logError } from "./middleware/request-log";
 import { loggingSender } from "./senders/dev.sender";
@@ -56,7 +56,7 @@ interface JourneyState {
   /** When the server next looks at this journey on its own, or null. */
   deadlineAt: number | null;
   alert: Alert | null;
-  /** Wrong codes on check-ins and at the end, until `CHECK_IN.lockMs` passes without one. */
+  /** Wrong codes on check-ins and at the end, until `JOURNEY_CODES.lockMs` passes without one. */
   wrongCodes: number;
   /** When the last wrong code was entered. Missing on journeys started before the lock. */
   wrongCodeAt?: number | null;
@@ -375,18 +375,18 @@ export class JourneyObject extends DurableObject<Bindings> {
 
   private async wrongCode(state: JourneyState, now: number): Promise<CodeResult> {
     // An old run of wrong codes no longer counts once the lock time has passed without one.
-    const recent = now - (state.wrongCodeAt ?? 0) < CHECK_IN.lockMs;
+    const recent = now - (state.wrongCodeAt ?? 0) < JOURNEY_CODES.lockMs;
     state.wrongCodes = (recent ? state.wrongCodes : 0) + 1;
     state.wrongCodeAt = now;
 
     // Someone guessing at the code during a check-in is no answer.
-    if (state.wrongCodes >= CHECK_IN.wrongTries && state.status === "check_in") {
+    if (state.wrongCodes >= JOURNEY_CODES.wrongTries && state.status === "check_in") {
       this.raiseAlert(state, "no_answer", now);
     }
 
     await this.save(state);
 
-    return state.wrongCodes >= CHECK_IN.wrongTries ? "too_many_tries" : "wrong_code";
+    return state.wrongCodes >= JOURNEY_CODES.wrongTries ? "too_many_tries" : "wrong_code";
   }
 
   /** Sends what the alarm took from the outbox and mirrors the status to D1. */
@@ -440,7 +440,7 @@ export class JourneyObject extends DurableObject<Bindings> {
  * guessing can't stop at the first code that works.
  */
 function lockedOut(state: JourneyState, now: number): boolean {
-  return state.wrongCodes >= CHECK_IN.wrongTries && now - (state.wrongCodeAt ?? 0) < CHECK_IN.lockMs;
+  return state.wrongCodes >= JOURNEY_CODES.wrongTries && now - (state.wrongCodeAt ?? 0) < JOURNEY_CODES.lockMs;
 }
 
 function travellerView(state: JourneyState): JourneyView {

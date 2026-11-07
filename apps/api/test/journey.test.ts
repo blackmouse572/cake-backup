@@ -10,7 +10,7 @@ import {
 import { env, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { JourneyObject } from "../src/journey-object";
-import { CHECK_IN } from "../src/constants";
+import { JOURNEY_CODES } from "../src/constants";
 import { hashToken } from "../src/utils";
 import { api, newNumber, readData, readError, send, signIn } from "./helpers";
 
@@ -451,14 +451,14 @@ describe("the safety circle's links", () => {
 
 /** Enters wrong codes until the journey refuses every code. */
 async function lockOut(id: string, action: "answer" | "end", cookie: string) {
-  for (let i = 0; i < CHECK_IN.wrongTries; i++) await enter(id, action, "1111", cookie);
+  for (let i = 0; i < JOURNEY_CODES.wrongTries; i++) await enter(id, action, "1111", cookie);
 }
 
 /** Pretends the last wrong code was entered longer ago than the lock lasts. */
 async function passLock(id: string) {
   await runInDurableObject(stubFor(id), async (_obj: JourneyObject, state) => {
     const s = await state.storage.get<{ wrongCodeAt: number }>("state");
-    await state.storage.put("state", { ...s, wrongCodeAt: Date.now() - CHECK_IN.lockMs - 1 });
+    await state.storage.put("state", { ...s, wrongCodeAt: Date.now() - JOURNEY_CODES.lockMs - 1 });
   });
 }
 
@@ -498,7 +498,7 @@ describe("check-ins and the duress PIN", () => {
     const { journey, cookie } = await startJourney();
     await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
 
-    for (let i = 1; i < CHECK_IN.wrongTries; i++) {
+    for (let i = 1; i < JOURNEY_CODES.wrongTries; i++) {
       const res = await enter(journey.id, "answer", "1111", cookie);
       expect(res.status).toBe(403);
       expect(await readError(res)).toBe("wrong_code");
@@ -514,6 +514,17 @@ describe("check-ins and the duress PIN", () => {
     await lockOut(journey.id, "answer", cookie);
 
     const res = await enter(journey.id, "answer", SAFE, cookie);
+    expect(res.status).toBe(429);
+    expect(await readError(res)).toBe("too_many_tries");
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("no_answer");
+  });
+
+  it("refuses the duress PIN on a check-in while locked, the same as the safe code", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await lockOut(journey.id, "answer", cookie);
+
+    const res = await enter(journey.id, "answer", DURESS, cookie);
     expect(res.status).toBe(429);
     expect(await readError(res)).toBe("too_many_tries");
     expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("no_answer");
@@ -614,10 +625,21 @@ describe("ending a journey", () => {
     expect((await travellerView(journey.id, cookie)).status).toBe("ended");
   });
 
+  it("doesn't lock a journey that started before the lock and has no time for its wrong codes", async () => {
+    const { journey, cookie } = await startJourney();
+
+    await runInDurableObject(stubFor(journey.id), async (_obj: JourneyObject, state) => {
+      const { wrongCodeAt: _, ...s } = (await state.storage.get<Record<string, number | null>>("state"))!;
+      await state.storage.put("state", { ...s, wrongCodes: JOURNEY_CODES.wrongTries });
+    });
+
+    expect((await enter(journey.id, "end", SAFE, cookie)).status).toBe(204);
+  });
+
   it("starts counting wrong codes again once the lock time passes without one", async () => {
     const { journey, cookie } = await startJourney();
 
-    for (let i = 1; i < CHECK_IN.wrongTries; i++) await enter(journey.id, "end", "1111", cookie);
+    for (let i = 1; i < JOURNEY_CODES.wrongTries; i++) await enter(journey.id, "end", "1111", cookie);
     await passLock(journey.id);
 
     const res = await enter(journey.id, "end", "1111", cookie);
