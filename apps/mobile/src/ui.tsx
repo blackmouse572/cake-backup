@@ -38,17 +38,25 @@ function DemoPill() {
 /** The Material Symbols Outlined subset in `assets/fonts` (weight 300, 20 pt), loaded in App.tsx. */
 export const ICON_FONT = { MaterialSymbols: symbolsFont };
 
-/** Codepoints of the glyphs in that subset. Add a name here and to the font together. */
+/**
+ * Codepoints of the glyphs in that subset. Add a name here and to the font
+ * together: the font is Google Fonts' own subset, fetched (with a non-browser
+ * user agent, which gets TrueType) from
+ * `https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,300,0,0&icon_names=<every name below, sorted, comma-separated>`.
+ */
 const GLYPHS = {
   arrow_back: 0xe5c4,
   arrow_downward: 0xe5db,
   arrow_upward: 0xe5d8,
   backspace: 0xe14a,
+  call: 0xe0b0,
+  call_end: 0xe0b1,
   check: 0xe668,
   check_circle: 0xf0be,
   close: 0xe5cd,
   contacts: 0xe0ba,
   dialpad: 0xe0bc,
+  edit: 0xe3c9,
   error: 0xf8b6,
   flag: 0xf0c6,
   group: 0xea21,
@@ -59,6 +67,8 @@ const GLYPHS = {
   person_add: 0xea4d,
   schedule: 0xefd6,
   translate: 0xe8e2,
+  vibration: 0xe62d,
+  volume_up: 0xe050,
   wifi_off: 0xe648,
 } as const;
 

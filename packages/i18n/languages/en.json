@@ -25,7 +25,10 @@
   "call": {
     "accept": "Accept",
     "decline": "Decline",
-    "enterCode": "Enter code to continue"
+    "enterCode": "Enter code to continue",
+    "incoming": "Incoming call",
+    "mobile": "Mobile",
+    "hangUp": "End call"
   },
   "circle": {
     "name": "Safety circle",
