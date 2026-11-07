@@ -56,6 +56,48 @@ describe("the journey on the phone", () => {
     expect(journeyReducer(ending, { type: "codeResult", result: "ok" })).toEqual({ name: "ended" });
   });
 
+  it("sends an SOS, and says so when it didn't go", () => {
+    expect(travelling).toMatchObject({ sos: "idle" });
+
+    const sending = journeyReducer(travelling, { type: "sosSending" });
+    expect(sending).toMatchObject({ sos: "sending" });
+    expect(journeyReducer(sending, { type: "sosSending" })).toBe(sending);
+
+    const failed = journeyReducer(sending, { type: "sosFailed" });
+    expect(failed).toMatchObject({ sos: "failed" });
+    expect(journeyReducer(failed, { type: "sosSending" })).toMatchObject({ sos: "sending" });
+  });
+
+  it("shows the alert once the server says it went out, and the SOS is no longer pending", () => {
+    const sending = journeyReducer(travelling, { type: "sosSending" });
+
+    expect(journeyReducer(sending, { type: "view", journey: { ...journey, status: "alerted" } })).toMatchObject({
+      sos: "idle",
+      journey: { status: "alerted" },
+    });
+  });
+
+  it("does not call a late failure an error when the alert is already showing", () => {
+    const alerted = journeyReducer(journeyReducer(travelling, { type: "sosSending" }), {
+      type: "view",
+      journey: { ...journey, status: "alerted" },
+    });
+
+    expect(journeyReducer(alerted, { type: "sosFailed" })).toMatchObject({ sos: "idle" });
+  });
+
+  it("stops waiting once the server has answered, even when the phone still shows a quiet screen", () => {
+    // After a duress PIN the phone keeps showing "active", so the answer is not "alerted".
+    const sending = journeyReducer(travelling, { type: "sosSending" });
+    const answered = journeyReducer(sending, { type: "view", journey });
+
+    expect(journeyReducer(answered, { type: "sosSent" })).toMatchObject({ sos: "idle", journey: { status: "active" } });
+  });
+
+  it("ignores an SOS before a journey is running", () => {
+    expect(journeyReducer(initialJourneyFlow, { type: "sosSending" })).toBe(initialJourneyFlow);
+  });
+
   it("starts over for a new trip", () => {
     expect(journeyReducer({ name: "ended" }, { type: "newTrip" })).toEqual(initialJourneyFlow);
   });

@@ -2,7 +2,10 @@ import { createDb } from "@cage/db";
 import { failure, ResetCodes, SetCodes, SetName, SetSettings, SignOut, success } from "@cage/shared";
 import { Hono } from "hono";
 import { requireSession } from "../middleware/require-session";
+import { messageSenderFor } from "../message-sender";
+import { logError } from "../middleware/request-log";
 import { validate } from "../middleware/validate";
+import { circleMessagesService } from "../services/circle-messages.service";
 import { codesService } from "../services/codes.service";
 import { journeysService } from "../services/journeys.service";
 import { meService } from "../services/me.service";
@@ -14,6 +17,19 @@ const codes = (env: AuthedEnv["Bindings"]) => {
 
   return codesService(db, env.CODE_PEPPER, journeysService(db, env.JOURNEY, env.CODE_PEPPER));
 };
+
+/**
+ * Tells the circle the codes were reset (#35). Runs after the answer is sent,
+ * so a slow or failing provider never holds up or undoes the reset.
+ */
+async function tellCircleCodesReset(env: AuthedEnv["Bindings"], userId: string): Promise<void> {
+  try {
+    const db = createDb(env.DB);
+    await circleMessagesService(db, messageSenderFor(env, db), env.CIRCLE_WEB_URL).codesReset(userId);
+  } catch (err) {
+    logError(err instanceof Error ? err : new Error(String(err)), "me.codes-reset");
+  }
+}
 
 /** `/me`: the signed-in traveller's own account. HTTP in and out only; rules are in the services. */
 export const meController = new Hono<AuthedEnv>()
@@ -79,12 +95,15 @@ export const meController = new Hono<AuthedEnv>()
    * a session made in the last few minutes by a fresh sign-in code (403
    * reverify_required otherwise, and the app sends one), and no open journey
    * (409 journey_open: mid-journey the traveller lets the timer run out).
+   * After a reset the circle gets a quiet heads-up.
    */
   .put("/codes/reset", validate("json", ResetCodes), async (c) => {
     const result = await codes(c.env).reset(c.var.userId, c.req.valid("json"), c.var.sessionCreatedAt);
 
     switch (result) {
       case "ok":
+        c.executionCtx.waitUntil(tellCircleCodesReset(c.env, c.var.userId));
+
         return c.body(null, 204);
       case "reverify_required":
         return c.json(failure(result), 403);

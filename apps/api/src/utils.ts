@@ -120,6 +120,8 @@ export function messageText(message: Message, locale: Locale): string {
       return t(`messages.alert.${message.reason}`, { name: message.name, url: message.url });
     case "safe_now":
       return t("messages.safeNow", { name: message.name });
+    case "codes_reset":
+      return t("messages.codesReset", { name: message.name });
   }
 }
 

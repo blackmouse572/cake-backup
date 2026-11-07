@@ -221,6 +221,23 @@ export class JourneyObject extends DurableObject<Bindings> {
   }
 
   /**
+   * The traveller held SOS: alerts the circle now, with no code. Lost contact
+   * only ever told the circle calmly, so an SOS raises it; any other alert
+   * stays as it is and the circle is not told twice.
+   */
+  async sos(now = Date.now()): Promise<JourneyView | null> {
+    const state = await this.load();
+
+    if (!state || state.status === "ended") return null;
+
+    if (state.alert?.reason === "lost_contact") state.alert = null;
+    this.raiseAlert(state, "sos", now);
+    await this.save(state);
+
+    return travellerView(state);
+  }
+
+  /**
    * Answers a check-in. The safe code clears any check-in or alert and the
    * journey carries on; the duress PIN looks the same on the phone but
    * alerts the circle. Too many wrong codes count as no answer, and lock out

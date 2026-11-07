@@ -5,12 +5,13 @@ import { useEffect, useReducer, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { DEMO } from "../auth";
 import { useTranslation } from "../i18n";
-import { currentJourney, enterCode, fetchJourney, forgetJourney, sendUpdate, startJourney } from "../services/journey.service";
+import { currentJourney, enterCode, fetchJourney, forgetJourney, sendSos, sendUpdate, startJourney } from "../services/journey.service";
 import { allowLocation, findPlace, watchReadings } from "../services/places.service";
 import { saveSettings } from "../services/settings.service";
 import { color, radius, text } from "../theme";
 import { BackBar, Caption, CodeDots, Icon, IconLine, Keypad, Note, PrimaryButton, Screen, Title } from "../ui";
-import { initialJourneyFlow, journeyReducer, type CodeEntry, type JourneyAction } from "./journey.reducer";
+import { initialJourneyFlow, journeyReducer, type CodeEntry, type JourneyAction, type SosState } from "./journey.reducer";
+import { SosButton } from "./sos-button";
 
 /** How often the open app asks the server what to show (a check-in, an alert). Quicker in the demo build, so the stage keeps up with the dashboard. */
 const POLL_MS = DEMO ? 2_000 : 10_000;
@@ -123,6 +124,19 @@ export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
     dispatch({ type: "started", journey: started.journey, token: started.journeyToken });
   }
 
+  /** Held for a second: the server alerts the circle, and the phone shows what it answers. A failure is shown, never swallowed. */
+  async function raiseSos() {
+    if (!id) return;
+    dispatch({ type: "sosSending" });
+    const view = await sendSos(id);
+
+    if (view === "error") return dispatch({ type: "sosFailed" });
+
+    if (view === "gone") return dispatch({ type: "gone" });
+    dispatch({ type: "view", journey: view });
+    dispatch({ type: "sosSent" });
+  }
+
   switch (state.name) {
     case "plan":
       return <PlanView busy={state.busy} problem={state.problem} onStart={start} onSettings={onSettings} />;
@@ -131,7 +145,7 @@ export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
     case "travelling":
       if (state.code) return <CodeView code={state.code} journey={state.journey} dispatch={dispatch} />;
 
-      return <TravellingView journey={state.journey} locale={locale} dispatch={dispatch} />;
+      return <TravellingView journey={state.journey} locale={locale} sos={state.sos} onSos={raiseSos} dispatch={dispatch} />;
   }
 }
 
@@ -225,10 +239,14 @@ function PlanView({
 function TravellingView({
   journey,
   locale,
+  sos,
+  onSos,
   dispatch,
 }: {
   journey: JourneyView;
   locale: Locale;
+  sos: SosState;
+  onSos: () => void;
   dispatch: (action: JourneyAction) => void;
 }) {
   const { t } = useTranslation();
@@ -248,6 +266,7 @@ function TravellingView({
           <Text style={[text("title"), { color: color.fgSecondary }]}>{t("ask.seconds")}</Text>
         </View>
         <IconLine icon="notifications">{t("ask.autoAlert")}</IconLine>
+        <SosButton state={sos} onSos={onSos} />
       </Screen>
     );
   }
@@ -262,6 +281,8 @@ function TravellingView({
         </View>
         <Title style={{ marginTop: space[5] }}>{t(lost ? "alerted.lostTitle" : "alerted.title")}</Title>
         <Caption>{t(lost ? "alerted.lostBody" : "alerted.body")}</Caption>
+        {/* Lost contact only told the circle calmly; SOS raises it. */}
+        {lost ? <SosButton state={sos} onSos={onSos} /> : null}
       </Screen>
     );
   }
@@ -279,6 +300,7 @@ function TravellingView({
         <IconLine icon="location_on">{journey.destination.name}</IconLine>
         <IconLine icon="group">{t("onRoute.sharing")}</IconLine>
       </View>
+      <SosButton state={sos} onSos={onSos} />
     </Screen>
   );
 }

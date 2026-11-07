@@ -4,7 +4,9 @@ import type { AlertReason } from "@cage/shared";
 import { alertEventsRepository } from "../repositories/alert-events.repository";
 import { circleContactsRepository } from "../repositories/circle-contacts.repository";
 import { circleLinksRepository } from "../repositories/circle-links.repository";
+import { travellerSettingsRepository } from "../repositories/traveller-settings.repository";
 import { usersRepository } from "../repositories/users.repository";
+import { logError } from "../middleware/request-log";
 import type { Message, MessageSender } from "../types";
 import { displayName, hashToken, newCircleLinkToken } from "../utils";
 
@@ -31,6 +33,7 @@ export function circleMessagesService(db: Db, sender: MessageSender, webUrl: str
   const links = circleLinksRepository(db);
   const users = usersRepository(db);
   const events = alertEventsRepository(db);
+  const settings = travellerSettingsRepository(db);
 
   async function newLink(): Promise<{ url: string; tokenHash: string }> {
     const token = newCircleLinkToken();
@@ -75,6 +78,30 @@ export function circleMessagesService(db: Db, sender: MessageSender, webUrl: str
       }
 
       return sent;
+    },
+
+    /**
+     * A quiet heads-up after "Quên mã?" reset the codes (#35, PRD "Forgot
+     * code"): someone holding the phone and SIM could do it too, so the circle
+     * hearing about it is the only signal left. No link, since no journey is
+     * open. Sent to everyone at once, because it runs in the short time a
+     * Worker has after its response, and one contact's failure never stops
+     * the others. Returns how many were sent.
+     */
+    async codesReset(userId: string): Promise<number> {
+      const [circle, account, row] = await Promise.all([contacts.list(userId), users.find(userId), settings.find(userId)]);
+      const message: Message = { kind: "codes_reset", name: displayName(account?.name ?? "", account?.phoneNumber ?? "") };
+      const locale = row?.locale ?? "vi";
+      const results = await Promise.allSettled(circle.map((c) => sender.send({ to: c.phone, locale, message })));
+
+      for (const result of results) {
+        if (result.status === "rejected") {
+          const err = result.reason instanceof Error ? result.reason : new Error(String(result.reason));
+          logError(err, "circle-messages.codesReset");
+        }
+      }
+
+      return results.filter((r) => r.status === "fulfilled" && r.value === "sent").length;
     },
   };
 }
