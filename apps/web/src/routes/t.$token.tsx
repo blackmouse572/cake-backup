@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { LiveJourney } from "../components/circle-view";
 import { LanguageLinks, LocaleProvider } from "../i18n";
-import { getCircleJourney, markCircleLinkOpened } from "../server/functions";
+import { getCircleJourney, markCircleLinkOpened, markCircleReached } from "../server/functions";
 
 /** How often the open page asks for the latest position. */
 const REFRESH_MS = 10_000;
@@ -40,7 +40,19 @@ function JourneyPage() {
       {/* Keyed on the alert, so each new alert counts as opened again for a contact already looking. */}
       {journey ? <MarkOpened key={journey.alert?.raisedAt ?? "none"} token={token} /> : null}
       {journey ? (
-        <LiveJourney journey={journey} locale={locale} now={now} />
+        <LiveJourney
+          journey={journey}
+          locale={locale}
+          now={now}
+          onReached={async (outcome) => {
+            const { result } = await markCircleReached({ data: { token, outcome } });
+
+            // Show the new note (or the ended alert) now; a failed refresh is not a failed answer.
+            if (result !== "error") void router.invalidate();
+
+            return result;
+          }}
+        />
       ) : (
         <TripEnded locale={locale} />
       )}
