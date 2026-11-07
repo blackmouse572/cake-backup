@@ -56,7 +56,7 @@ These patterns are from general knowledge and still need checking against source
 - During a journey there is no way to reset the codes. The code screen says so: let the time run out and Cage tells the circle (screen 26). Otherwise whoever holds the phone could take the codes over mid-journey.
 - Outside a journey the traveller resets both codes with a new sign-in code to their phone (Zalo or SMS) instead of the current safe code. The server takes the reset only from a session created in the last 10 minutes, so an old session alone is not enough. Right after signing in on a new phone (08c), the code just verified counts.
 - Both codes are set again together, with the same rules as the first time, and the old ones stop working. The wrong-try lock is cleared.
-- Limit: someone holding the phone and SIM before a journey can reset the codes too. So a reset sends the circle a quiet heads-up (decided 2026-11-04, #48).
+- Limit: someone holding the phone and SIM before a journey can reset the codes too. So a reset sends the circle a quiet heads-up (decided 2026-11-04, #48): one short message to every contact (Zalo first, SMS fallback) in the traveller's language, saying the traveller reset their codes in Cage and asking them to call and check if the traveller hasn't mentioned it. It never says which code or the new codes, and carries no link. It goes out after the reset is saved, so a failed message never undoes the reset. There is no extra limit on these messages: each reset needs a fresh sign-in code, and those are capped per number.
 
 ### Lost contact
 - When the phone goes silent, Cage waits until the expected arrival time plus a buffer (about 20 minutes) before acting.

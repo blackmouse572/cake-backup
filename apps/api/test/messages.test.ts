@@ -30,6 +30,18 @@ describe("circle messages", () => {
     }
   });
 
+  it("tells the circle the codes were reset, without saying which code or the new ones", () => {
+    expect(messageText({ kind: "codes_reset", name: "Lan" }, "vi")).toBe(
+      "Lan vừa đặt lại mã trên Cage. Nếu Lan chưa nhắc gì về việc này, hãy gọi hỏi thăm Lan.",
+    );
+
+    for (const locale of ["vi", "en"] as const) {
+      const text = messageText({ kind: "codes_reset", name: "Lan" }, locale);
+      expect(text).toContain("Lan");
+      expect(text).not.toMatch(/\d|!|an toàn|khẩn cấp|duress|safe code|cảnh báo|công an/i);
+    }
+  });
+
   it("has a message for every alert reason in every language", () => {
     for (const locale of ["vi", "en"] as const) {
       for (const reason of ["no_answer", "duress", "sos", "lost_contact"] as const) {

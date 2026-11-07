@@ -25,7 +25,9 @@ export type Message =
   | { kind: "journey_started"; name: string; destination: string; arriveAt: number; url: string }
   /** `likelyBatteryDied` changes only the lost-contact message: the last update had a nearly empty battery. */
   | { kind: "alert"; reason: AlertReason; name: string; url: string; likelyBatteryDied?: boolean }
-  | { kind: "safe_now"; name: string };
+  | { kind: "safe_now"; name: string }
+  /** The traveller reset both codes with "Quên mã?" (#35). Never says which code or the new ones. */
+  | { kind: "codes_reset"; name: string };
 
 export type MessageKind = Message["kind"];
 

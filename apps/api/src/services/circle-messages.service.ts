@@ -4,7 +4,9 @@ import type { AlertReason } from "@cage/shared";
 import { alertEventsRepository } from "../repositories/alert-events.repository";
 import { circleContactsRepository } from "../repositories/circle-contacts.repository";
 import { circleLinksRepository } from "../repositories/circle-links.repository";
+import { travellerSettingsRepository } from "../repositories/traveller-settings.repository";
 import { usersRepository } from "../repositories/users.repository";
+import { logError } from "../middleware/request-log";
 import type { Message, MessageSender } from "../types";
 import { displayName, hashToken, newCircleLinkToken } from "../utils";
 
@@ -30,6 +32,7 @@ export function circleMessagesService(db: Db, sender: MessageSender, webUrl: str
   const links = circleLinksRepository(db);
   const users = usersRepository(db);
   const events = alertEventsRepository(db);
+  const settings = travellerSettingsRepository(db);
 
   async function newLink(): Promise<{ url: string; tokenHash: string }> {
     const token = newCircleLinkToken();
@@ -66,6 +69,30 @@ export function circleMessagesService(db: Db, sender: MessageSender, webUrl: str
 
         const ok = await sender.send({ to: contact.phone, locale: journey.locale, message });
         sent += ok === "sent" ? 1 : 0;
+      }
+
+      return sent;
+    },
+
+    /**
+     * A quiet heads-up after "Quên mã?" reset the codes (#35, PRD "Forgot
+     * code"): someone holding the phone and SIM could do it too, so the circle
+     * hearing about it is the only signal left. No link, since no journey is
+     * open. One contact's failure never stops the others. Returns how many
+     * were sent.
+     */
+    async codesReset(userId: string): Promise<number> {
+      const [circle, account, row] = await Promise.all([contacts.list(userId), users.find(userId), settings.find(userId)]);
+      const message: Message = { kind: "codes_reset", name: displayName(account?.name ?? "", account?.phoneNumber ?? "") };
+      const locale = row?.locale ?? "vi";
+      let sent = 0;
+
+      for (const contact of circle) {
+        try {
+          sent += (await sender.send({ to: contact.phone, locale, message })) === "sent" ? 1 : 0;
+        } catch (err) {
+          logError(err instanceof Error ? err : new Error(String(err)), "circle-messages.codesReset");
+        }
       }
 
       return sent;
