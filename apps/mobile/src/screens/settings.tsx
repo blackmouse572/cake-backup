@@ -219,12 +219,17 @@ function LanguageView({ locale, onChoose, onBack }: { locale: Locale; onChoose: 
           );
         })}
       </Section>
-      <Text style={[styles.sectionTitle, { marginTop: space[6] }]}>{t("settings.languageScreen.changes")}</Text>
-      <View style={{ gap: space[3], marginTop: space[2] }}>
-        <IconLine icon="info">{t("settings.languageScreen.app")}</IconLine>
-        <IconLine icon="notifications">{t("settings.languageScreen.messages")}</IconLine>
-        <IconLine icon="lock">{t("settings.languageScreen.disguise")}</IconLine>
-      </View>
+      {/* These lines name Cage and the disguise, so the disguised build leaves them out. */}
+      {DISGUISE ? null : (
+        <>
+          <Text style={[styles.sectionTitle, { marginTop: space[6] }]}>{t("settings.languageScreen.changes")}</Text>
+          <View style={{ gap: space[3], marginTop: space[2] }}>
+            <IconLine icon="info">{t("settings.languageScreen.app")}</IconLine>
+            <IconLine icon="notifications">{t("settings.languageScreen.messages")}</IconLine>
+            <IconLine icon="lock">{t("settings.languageScreen.disguise")}</IconLine>
+          </View>
+        </>
+      )}
     </Screen>
   );
 }

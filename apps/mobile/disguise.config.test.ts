@@ -27,6 +27,11 @@ describe("the disguised build", () => {
     });
   });
 
+  it("tells the app it is the disguised build, from the same place that renames it", () => {
+    expect(disguised.extra).toMatchObject({ disguise: true });
+    expect(base.extra?.disguise).toBeUndefined();
+  });
+
   it("shows no Cage logo while the app starts", () => {
     expect(pluginOptions(disguised, "expo-splash-screen")).toMatchObject({ image: "./assets/splash-disguise.png" });
   });

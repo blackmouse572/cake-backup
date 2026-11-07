@@ -30,6 +30,8 @@ export const DisguisableConfig = z.looseObject({
   icon: z.string().optional(),
   android: z.looseObject({ adaptiveIcon: z.looseObject({}).optional(), package: z.string().optional() }).optional(),
   ios: z.looseObject({ bundleIdentifier: z.string().optional() }).optional(),
+  /** Reaches the app as `Constants.expoConfig.extra`. */
+  extra: z.looseObject({}).optional(),
   plugins: z.array(Plugin).optional(),
 });
 
@@ -74,6 +76,8 @@ export function withDisguise(config: DisguisableConfig, identifier?: string): Di
     ...config,
     name: DISGUISE_NAME,
     icon: "./assets/icon-disguise.png",
+    // The one flag the app reads (`DISGUISE` in `src/auth.ts`), so the name and the app can't disagree.
+    extra: { ...config.extra, disguise: true },
     android,
     ios: identifier ? { ...config.ios, bundleIdentifier: identifier } : config.ios,
     plugins: config.plugins?.map(disguisePlugin),

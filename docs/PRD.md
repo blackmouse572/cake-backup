@@ -152,6 +152,9 @@ The MVP proves the journey loop works and that people trust its alerts.
 
 | Question | Current suggestion |
 | --- | --- |
+| Does iOS show "Ghi chú+" from install in the disguised build? | Assumed yes, since iOS can change the icon but not the name at runtime. Jaden to confirm (#26). |
+| How does the traveller get past the decoy screen in disguise mode, once it exists? | A gesture or the safe code; decide and record it here when the decoy screen is built (#26, ADR 0002). |
+| What name does the SMS and Zalo sender show? | A registered sender called "Cage" would show on the phone of someone in disguise mode, so check it when the brandname is registered ([docs/messaging.md](messaging.md)). |
 | Keep the name "Cage"? | Keep it as the brand but never show it on the phone in disguise mode. Test with Vietnamese users, since "cage" can read as trapped. |
 | Which NGOs and hotlines? | Use 111 as the default hotline: since Decree 162/2025 it is also the national anti-trafficking line, 24/7. Contact Blue Dragon and Pacific Links before listing them. Start by showing numbers to the circle; build direct alerts once one NGO signs a data sharing agreement. See [hotlines.md](hotlines.md). |
 | Must Cage store data in Vietnam? | Ask a lawyer whether the 2025 Cybersecurity Law covers Cage. Cloudflare can't keep data in Vietnam, so a yes changes ADR 0001. See [privacy-review.md](privacy-review.md). |
