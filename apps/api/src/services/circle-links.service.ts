@@ -1,12 +1,12 @@
 import type { Db } from "@cage/db";
-import type { CircleJourneyView } from "@cage/shared";
+import type { CircleJourneyView, ReachedOutcome } from "@cage/shared";
 import type { JourneyObject } from "../journey-object";
+import { circleContactsRepository } from "../repositories/circle-contacts.repository";
 import { circleLinksRepository } from "../repositories/circle-links.repository";
 import { journeysRepository } from "../repositories/journeys.repository";
 import { travellerSettingsRepository } from "../repositories/traveller-settings.repository";
 import { usersRepository } from "../repositories/users.repository";
 import { displayName, hashToken } from "../utils";
-import { circleService } from "./circle.service";
 
 /**
  * Opening a circle link (#18). A link works while its journey runs and its
@@ -18,18 +18,20 @@ export function circleLinksService(db: Db, objects: DurableObjectNamespace<Journ
   const journeys = journeysRepository(db);
   const users = usersRepository(db);
   const settings = travellerSettingsRepository(db);
-  const circle = circleService(db);
+  const contacts = circleContactsRepository(db);
 
-  /** The link's row, journey and journey object while the link works, else null. */
+  /** The link's row, journey, contact and journey object while the link works, else null. */
   async function resolve(token: string) {
     const link = await links.findByHash(await hashToken(token));
 
     if (!link) return null;
     const journey = await journeys.find(link.journeyId);
+    // A removed contact is no longer found, so their links stop working.
+    const contact = journey ? await contacts.find(journey.userId, link.contactId) : undefined;
 
-    if (!journey || !(await circle.isMember(journey.userId, link.contactId))) return null;
+    if (!journey || !contact) return null;
 
-    return { link, journey, stub: objects.get(objects.idFromName(journey.id)) };
+    return { link, journey, contact, stub: objects.get(objects.idFromName(journey.id)) };
   }
 
   return {
@@ -71,6 +73,20 @@ export function circleLinksService(db: Db, objects: DurableObjectNamespace<Journ
       if (!found.link.openedAt) await links.recordOpened(found.link.tokenHash, new Date(now));
 
       return true;
+    },
+
+    /**
+     * The contact reached the traveller and says how they are (#22). Shown to
+     * the whole circle; the alert stays on. "no_alert" when there is nothing
+     * to answer.
+     */
+    async markReached(token: string, outcome: ReachedOutcome, now = Date.now()): Promise<"ok" | "no_alert" | "not_found"> {
+      const found = await resolve(token);
+      const view = found ? await found.stub.circleView(now) : null;
+
+      if (!found || !view || view.status === "ended") return "not_found";
+
+      return found.stub.markReached(found.contact.id, found.contact.name, outcome, now);
     },
   };
 }
