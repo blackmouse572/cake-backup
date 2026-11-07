@@ -193,6 +193,7 @@
       "sos": "{{name}} vừa bấm SOS. Xem vị trí tại {{url}}. Hãy nhắn tin trước, đừng gọi ngay.",
       "lost_contact": "Cage mất kết nối với {{name}} sau giờ dự kiến đến nơi. Xem vị trí cuối tại {{url}}"
     },
+    "lostContactBattery": "Cage mất kết nối với {{name}} sau giờ dự kiến đến nơi. Lần cuối máy còn rất ít pin, nên điện thoại có thể đã hết pin. Xem vị trí cuối tại {{url}}",
     "safeNow": "{{name}} đã báo an toàn bằng mã an toàn. Bạn không cần làm gì thêm."
   },
   "demo": {

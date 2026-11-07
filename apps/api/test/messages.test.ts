@@ -15,6 +15,21 @@ describe("circle messages", () => {
     expect(messageText({ kind: "alert", reason: "duress", name: "Lan", url }, "en")).toContain("Don't call or message Lan");
   });
 
+  it("says the phone probably died when contact is lost at low battery, and never 'missing'", () => {
+    const lost = { kind: "alert", reason: "lost_contact", name: "Lan", url } as const;
+    expect(messageText({ ...lost, batteryDied: true }, "vi")).toContain("có thể đã hết pin");
+    expect(messageText({ ...lost, batteryDied: true }, "en")).toContain("phone probably died");
+    expect(messageText(lost, "vi")).not.toContain("hết pin");
+
+    for (const locale of ["vi", "en"] as const) {
+      for (const batteryDied of [true, false]) {
+        const text = messageText({ ...lost, batteryDied }, locale);
+        expect(text).toContain(url);
+        expect(text).not.toMatch(/mất tích|missing|!/i);
+      }
+    }
+  });
+
   it("has a message for every alert reason in every language", () => {
     for (const locale of ["vi", "en"] as const) {
       for (const reason of ["no_answer", "duress", "sos", "lost_contact"] as const) {
