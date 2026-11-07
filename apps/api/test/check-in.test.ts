@@ -165,6 +165,21 @@ describe("check-in calls (#20)", () => {
     expect((await view(trip)).status).toBe("active");
   });
 
+  it("after the duress PIN, still asks and rings the phone as after the safe code", async () => {
+    const trip = await onTrip();
+    await api(`/journeys/${trip.journey.id}/check-in`, { method: "POST", headers: { cookie: trip.cookie } });
+    await send(`/journeys/${trip.journey.id}/answer`, "POST", { code: DURESS }, { cookie: trip.cookie });
+
+    await update(trip, ON);
+    await rewrite(trip.journey.id, (s) => ({ watch: { ...s.watch, still: { ...ON, since: Date.now() - TIMERS.stoppedTooLongMs } } }));
+    await update(trip, ON);
+
+    expect((await view(trip)).checkIn?.reason).toBe("stopped");
+    const s = await stored(trip.journey.id);
+    expect(s.status).toBe("alerted");
+    expect(s.callAt).not.toBeNull();
+  });
+
   it("tells the phone why and when it asked, only during the check-in", async () => {
     const trip = await onTrip();
     expect((await view(trip)).checkIn).toBeNull();

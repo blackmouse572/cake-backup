@@ -49,6 +49,7 @@ These patterns are from general knowledge and still need checking against source
 ### Duress PIN
 - Works in the app and on the check-in call.
 - Looks exactly like "I'm safe" in the UI, timing and network behaviour, while sending the alert quietly.
+- Afterwards the phone carries on exactly as after the safe code: check-ins at the next deadline or when the phone asks, the alert screen after an unanswered check-in, too many wrong codes or SOS, and after "ending" the trip its token, codes and SOS answer as for an ended trip. Only the circle sees the alert, and it hears nothing new from these.
 
 ### Wrong codes on a journey
 - Five wrong codes on a journey (check-ins and ending it share the count) lock every code for 5 minutes, the safe code and the duress PIN included, so whoever holds the phone can't quickly try codes until one works. During a check-in they also count as no answer and alert the circle.
@@ -66,6 +67,7 @@ These patterns are from general knowledge and still need checking against source
 - Every location update carries the battery level. A phone that died at low battery gets a calm "phone probably died" message to the circle.
 - Silence alone only reaches the circle, never police or hotlines.
 - The user can cancel from another device or by SMS code, and a circle member can mark that they reached the user.
+- A circle member who reached the traveller says so on their page (screen 24a), with what they heard: "fine, on the way" or "still needs help". Every contact's page shows it with the contact's name (as the traveller saved them) and the time. It never cancels the alert or stops the ladder: only the traveller's safe code does. It is offered on a missed check-in, SOS and lost contact, not after the duress PIN, where contacting the traveller is discouraged. The notes belong to the current alert and go when it ends or a stronger one replaces it.
 - Can be turned on per trip, for risky journeys only.
 - When updates resume, the journey goes back to active and the circle gets a calm "back in touch" message with the link (screen 16). The server checks in again once the arrival buffer passes, since the traveller is late. A stronger alert (SOS, the duress PIN) stays on: only the safe code ends it.
 
@@ -80,7 +82,7 @@ These patterns are from general knowledge and still need checking against source
 
 ### SOS and fake call
 - SOS is always reachable during a journey, on the on-route screen (02), the check-in screen (03) and the lost-contact screen. It is a one-second press and hold, with a progress bar and a buzz, so a pocket press can't raise it. It needs no code: it alerts the safety circle at once (`POST /journeys/:id/sos`). Lost contact only tells the circle calmly, so an SOS raises it to an SOS alert; any other alert (duress, no answer) stays as it is and the circle is not told twice. If the SOS doesn't reach the server the phone says so and the traveller can hold again. The safe code clears it, like any alert.
-- A fake incoming call helps the user leave an uncomfortable situation.
+- A fake incoming call helps the user leave an uncomfortable situation. From the on-route screen (02) the traveller picks a caller (Mẹ, Bố, Chị Hai, Sếp or a typed name) and a delay (5 seconds, 30 seconds or 1 minute); the phone then rings on the check-in call's screen and can be answered or declined. It stays on the phone: no server call, and the circle never hears about it. It rings only while the app is open, and it gives way when Cage asks a check-in or raises an alert.
 
 ### Disguise mode
 - Neutral app name and icon (for example a notes app), quiet notifications, a quick-hide gesture and a decoy screen, because a trafficker may check the phone.

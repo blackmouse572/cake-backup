@@ -2,7 +2,7 @@ import { formatTime, isLocale, type Locale } from "@cage/i18n";
 import { CODE_LENGTH, TIMERS, type JourneyView, type Place } from "@cage/shared";
 import { space } from "@cage/ui-tokens";
 import { useCallback, useEffect, useReducer, useState } from "react";
-import { StyleSheet, Text, Vibration, View } from "react-native";
+import { Pressable, StyleSheet, Text, Vibration, View } from "react-native";
 import { DEMO } from "../auth";
 import { useTranslation } from "../i18n";
 import { currentJourney, enterCode, fetchJourney, forgetJourney, sendSos, sendUpdate, startJourney } from "../services/journey.service";
@@ -11,8 +11,10 @@ import { allowLocation, watchReadings } from "../services/places.service";
 import { dismissCalls, registerForCalls, useCallTaps, type CallPush } from "../services/push.service";
 import { saveSettings } from "../services/settings.service";
 import { color, text } from "../theme";
-import { BackBar, Caption, CodeDots, Icon, IconLine, Keypad, Note, PrimaryButton, Screen, Title } from "../ui";
+import { BackBar, Caption, CodeDots, Icon, IconButton, IconLine, Keypad, Note, PrimaryButton, Screen, Title } from "../ui";
 import { CallDots, CallKeypad, InCall, IncomingCall } from "./call-screen";
+import { FakeCallPicker, FakeCallScreen, useFakeCallClock } from "./fake-call";
+import { fakeCallOff, fakeCallReducer, secondsUntilRing, type FakeCall, type FakeCallAction } from "./fake-call.reducer";
 import { initialJourneyFlow, journeyReducer, type CallScreen, type CodeEntry, type JourneyAction, type SosState } from "./journey.reducer";
 import { PlanView } from "./plan";
 import { SosButton } from "./sos-button";
@@ -37,6 +39,7 @@ const WRONG_BUZZ_MS = 200;
  * safe?" (03), alert sent (04) and the code screens (26, 26b). The flow is
  * `journeyReducer`; this file draws it and talks to the services.
  * Screen 01 (search, route, travel time) is `PlanView` in plan.tsx.
+ * The fake call (02f and the call screens) is `fakeCallReducer`, and stays on the phone.
  */
 export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
   const { t, i18n } = useTranslation();
@@ -69,6 +72,16 @@ export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
 
     return () => clearInterval(timer);
   }, [checkingIn]);
+
+  const [fakeCall, dispatchFakeCall] = useReducer(fakeCallReducer, fakeCallOff);
+  // The fake call is for a calm trip. Once Cage asks or alerts, that screen comes first.
+  const calm = travelling?.journey.status === "active";
+
+  useFakeCallClock(fakeCall, dispatchFakeCall);
+
+  useEffect(() => {
+    if (!calm) dispatchFakeCall({ type: "stop" });
+  }, [calm]);
 
   // Picks up a journey that was running when the app closed.
   useEffect(() => {
@@ -172,9 +185,23 @@ export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
         return <CallView call={state.call} code={state.code} callerName={callerName || t("call.defaultCaller")} dispatch={dispatch} />;
       }
 
+      if (calm && (fakeCall.name === "ringing" || fakeCall.name === "inCall")) return <FakeCallScreen state={fakeCall} dispatch={dispatchFakeCall} />;
+
+      if (calm && fakeCall.name === "picking") return <FakeCallPicker state={fakeCall} dispatch={dispatchFakeCall} />;
+
       if (state.code) return <CodeView code={state.code} journey={state.journey} dispatch={dispatch} />;
 
-      return <TravellingView journey={state.journey} locale={locale} sos={state.sos} onSos={raiseSos} dispatch={dispatch} />;
+      return (
+        <TravellingView
+          journey={state.journey}
+          locale={locale}
+          sos={state.sos}
+          onSos={raiseSos}
+          dispatch={dispatch}
+          fakeCall={fakeCall}
+          dispatchFakeCall={dispatchFakeCall}
+        />
+      );
   }
 }
 
@@ -232,12 +259,16 @@ function TravellingView({
   sos,
   onSos,
   dispatch,
+  fakeCall,
+  dispatchFakeCall,
 }: {
   journey: JourneyView;
   locale: Locale;
   sos: SosState;
   onSos: () => void;
   dispatch: (action: JourneyAction) => void;
+  fakeCall: FakeCall;
+  dispatchFakeCall: (action: FakeCallAction) => void;
 }) {
   const { t } = useTranslation();
   const asking = journey.status === "check_in";
@@ -279,17 +310,31 @@ function TravellingView({
   }
 
   const minutesLeft = Math.max(0, Math.round((journey.expectedArrivalAt - now) / MINUTE_MS));
+  const ringIn = secondsUntilRing(fakeCall, now);
 
   return (
     <Screen footer={<PrimaryButton label={t("journey.end")} onPress={() => dispatch({ type: "openCode", purpose: "end" })} />}>
-      <View style={styles.arrival}>
-        <Text style={styles.arrivalTime}>{formatTime(journey.expectedArrivalAt, locale)}</Text>
-        <Text style={[text("title"), { color: color.fgSecondary }]}>{t("onRoute.arrive")}</Text>
+      <View style={styles.arrivalRow}>
+        <View style={styles.arrival}>
+          <Text style={styles.arrivalTime}>{formatTime(journey.expectedArrivalAt, locale)}</Text>
+          <Text style={[text("title"), { color: color.fgSecondary }]}>{t("onRoute.arrive")}</Text>
+        </View>
+        <IconButton icon="call" label={t("fakeCall.open")} onPress={() => dispatchFakeCall({ type: "open" })} />
       </View>
       <Text style={[text("body"), { color: color.fgSecondary }]}>{t("onRoute.left", { minutes: minutesLeft })}</Text>
       <View style={styles.lines}>
         <IconLine icon="location_on">{journey.destination.name}</IconLine>
         <IconLine icon="group">{t("onRoute.sharing")}</IconLine>
+        {fakeCall.name === "waiting" && ringIn !== null ? (
+          <View style={styles.waiting}>
+            <View style={{ flex: 1 }}>
+              <IconLine icon="schedule">{t("fakeCall.waiting", { name: fakeCall.callerName, count: ringIn })}</IconLine>
+            </View>
+            <Pressable accessibilityRole="button" onPress={() => dispatchFakeCall({ type: "stop" })} hitSlop={12}>
+              <Text style={[text("caption"), { color: color.fgPrimary }]}>{t("common.cancel")}</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
       <SosButton state={sos} onSos={onSos} />
     </Screen>
@@ -354,7 +399,9 @@ function EndedView({ onNewTrip }: { onNewTrip: () => void }) {
 
 const styles = StyleSheet.create({
   badge: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginTop: space[7] },
-  arrival: { flexDirection: "row", alignItems: "baseline", gap: space[2], marginTop: space[7] },
+  arrivalRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: space[7] },
+  arrival: { flexDirection: "row", alignItems: "baseline", gap: space[2] },
+  waiting: { flexDirection: "row", alignItems: "center", gap: space[3] },
   arrivalTime: { fontSize: 48, lineHeight: 56, fontWeight: "500", color: color.fgPrimary },
   lines: { marginTop: space[6], gap: space[3] },
   countdown: { flexDirection: "row", alignItems: "baseline", gap: space[2], marginTop: space[5], marginBottom: space[5] },

@@ -100,6 +100,20 @@ export const EnterCode = z.object({ code: Code });
 export type EnterCode = z.infer<typeof EnterCode>;
 
 /**
+ * What a contact heard when they reached the traveller (screen 24a): "ok"
+ * (fine, on the way) or "needs_help". Either way the alert stays on: only
+ * the traveller's safe code ends it.
+ */
+export const ReachedOutcome = z.enum(["ok", "needs_help"]);
+
+export type ReachedOutcome = z.infer<typeof ReachedOutcome>;
+
+/** Body of `POST /links/:token/reached`. */
+export const MarkReached = z.object({ outcome: ReachedOutcome });
+
+export type MarkReached = z.infer<typeof MarkReached>;
+
+/**
  * A journey as the safety circle sees it through their link (screens 22 to
  * 24b). Unlike the traveller's own view, it says when the duress PIN was used.
  */
@@ -126,6 +140,12 @@ export const CircleJourneyView = JourneyView.extend({
        * page puts Tổng đài 111 first. It stays there once it has climbed.
        */
       step: z.enum(["circle", "hotline"]),
+      /**
+       * Contacts who reached the traveller since this alert, one note per
+       * contact (the latest), oldest first. `name` is the contact as the
+       * traveller saved them. Shown on every contact's page (24a).
+       */
+      reached: z.array(z.object({ name: z.string(), at: z.number(), outcome: ReachedOutcome })).default([]),
     })
     .nullable(),
 });

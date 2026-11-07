@@ -20,6 +20,7 @@ import {
   type JourneyView,
   type LocationUpdate,
   type RouteWatch,
+  type ReachedOutcome,
   type StartJourney,
 } from "@cage/shared";
 import { DurableObject } from "cloudflare:workers";
@@ -42,6 +43,8 @@ interface Alert {
   openedAt: number | null;
   /** "hotline" once the ladder climbed. Missing on alerts raised before the ladder ran on the server. */
   step?: "circle" | "hotline";
+  /** Contacts who said they reached the traveller since this alert (#22), one per contact. */
+  reached?: { contactId: string; name: string; at: number; outcome: ReachedOutcome }[];
 }
 
 interface JourneyState {
@@ -169,7 +172,7 @@ export class JourneyObject extends DurableObject<Bindings> {
   async update(update: LocationUpdate, tokenHash: string, now = Date.now()): Promise<JourneyView | UpdateRefused> {
     const state = await this.load();
 
-    if (!state || state.status === "ended" || !sameString(state.tokenHash, tokenHash)) return "unauthorized";
+    if (!state || endedForPhone(state) || !sameString(state.tokenHash, tokenHash)) return "unauthorized";
 
     state.lastHeardAt = now;
 
@@ -210,6 +213,7 @@ export class JourneyObject extends DurableObject<Bindings> {
             raisedAt: state.alert.raisedAt,
             // Once climbed, it stays; until the alarm runs, the clock already says where it is.
             step: state.alert.step === "hotline" ? "hotline" : alertStep(state.alert, now),
+            reached: (state.alert.reached ?? []).map(({ name, at, outcome }) => ({ name, at, outcome })),
           }
         : null,
     };
@@ -223,6 +227,24 @@ export class JourneyObject extends DurableObject<Bindings> {
     state.alert.openedAt = now;
     state.ladderAt = null;
     await this.save(state);
+  }
+
+  /**
+   * A contact says they reached the traveller (#22, screen 24a). It informs
+   * the rest of the circle and never cancels the alert or stops the ladder:
+   * only the traveller's safe code does. A contact saying it again replaces
+   * their note. Not after the duress PIN, where contacting the traveller is
+   * discouraged (screen 24b offers no such button).
+   */
+  async markReached(contactId: string, name: string, outcome: ReachedOutcome, now = Date.now()): Promise<"ok" | "no_alert"> {
+    const state = await this.load();
+
+    if (!state?.alert || state.status === "ended" || state.alert.reason === "duress") return "no_alert";
+    const others = (state.alert.reached ?? []).filter((r) => r.contactId !== contactId);
+    state.alert.reached = [...others, { contactId, name, at: now, outcome }];
+    await this.ctx.storage.put(STATE, state);
+
+    return "ok";
   }
 
   /**
@@ -251,6 +273,10 @@ export class JourneyObject extends DurableObject<Bindings> {
     if (state.status === "active") {
       this.askCheckIn(state, "off_route", now);
       await this.save(state);
+    } else if (hiddenDuress(state) && state.shownStatus === "active") {
+      // The circle is already alerted; the phone gets the check-in it would get after the safe code.
+      this.askCheckIn(state, "off_route", now);
+      await this.save(state);
     }
 
     return travellerView(state);
@@ -264,7 +290,14 @@ export class JourneyObject extends DurableObject<Bindings> {
   async sos(now = Date.now()): Promise<JourneyView | null> {
     const state = await this.load();
 
-    if (!state || state.status === "ended") return null;
+    if (!state || endedForPhone(state)) return null;
+
+    // After a hidden duress PIN the circle already has the stronger alert; the phone shows SOS as it would anyway.
+    if (hiddenDuress(state)) {
+      state.shownStatus = "alerted";
+      state.deadlineAt = null;
+      this.endCheckIn(state);
+    }
 
     this.raiseAlert(state, "sos", now);
     await this.save(state);
@@ -281,7 +314,7 @@ export class JourneyObject extends DurableObject<Bindings> {
   async answer(check: CodeCheck, now = Date.now()): Promise<CodeResult> {
     const state = await this.load();
 
-    if (!state || state.status === "ended") return "not_found";
+    if (!state || endedForPhone(state)) return "not_found";
 
     if (lockedOut(state, now)) return "too_many_tries";
 
@@ -318,7 +351,7 @@ export class JourneyObject extends DurableObject<Bindings> {
   async end(check: CodeCheck, now = Date.now()): Promise<CodeResult> {
     const state = await this.load();
 
-    if (!state || state.status === "ended") return "not_found";
+    if (!state || endedForPhone(state)) return "not_found";
 
     if (lockedOut(state, now)) return "too_many_tries";
 
@@ -436,7 +469,9 @@ export class JourneyObject extends DurableObject<Bindings> {
    * a check-in started, so the caller saves with the alarm.
    */
   private watch(state: JourneyState, update: LocationUpdate, now: number): boolean {
-    if (state.status !== "active" || state.shownStatus !== "active") return false;
+    const running = state.status === "active" || hiddenDuress(state);
+
+    if (!running || state.shownStatus !== "active") return false;
 
     const route = state.route ? decodePolyline(state.route) : null;
     const reading = { lat: update.lat, lng: update.lng, at: now, accuracyM: update.accuracyM };
@@ -455,7 +490,8 @@ export class JourneyObject extends DurableObject<Bindings> {
    * (#20). The alert comes when the second call stops ringing.
    */
   private askCheckIn(state: JourneyState, reason: CheckInReason, now: number): void {
-    state.status = "check_in";
+    // After a hidden duress PIN the circle already has the alert; only the phone is asked, and rung, as it would be after the safe code.
+    if (!hiddenDuress(state)) state.status = "check_in";
     state.shownStatus = "check_in";
     state.deadlineAt = checkInDeadline(now);
     state.checkIn = { reason, askedAt: now };
@@ -474,7 +510,7 @@ export class JourneyObject extends DurableObject<Bindings> {
   private nextCall(state: JourneyState, now: number): 1 | 2 | null {
     if (state.callAt == null || now < state.callAt) return null;
 
-    if (state.status !== "check_in" || !state.checkIn) {
+    if (state.shownStatus !== "check_in" || !state.checkIn) {
       state.callAt = null;
 
       return null;
@@ -488,6 +524,12 @@ export class JourneyObject extends DurableObject<Bindings> {
   }
 
   private onDeadline(state: JourneyState, now: number): void {
+    if (hiddenDuress(state)) {
+      this.phoneDeadline(state, now);
+
+      return;
+    }
+
     if (state.status === "check_in") {
       this.raiseAlert(state, "no_answer", now);
 
@@ -506,6 +548,38 @@ export class JourneyObject extends DurableObject<Bindings> {
     if (next === "lost_contact") {
       this.raiseAlert(state, "lost_contact", now);
     } else if (next === "check_in") {
+      this.askCheckIn(state, "late", now);
+    }
+  }
+
+  /**
+   * A deadline after a hidden duress PIN. The circle is already alerted and
+   * hears nothing new; the phone moves on exactly as it would after the
+   * safe code, so nobody watching it can tell (#50): a check-in at the
+   * arrival deadline (or lost contact if it went quiet), then the alert
+   * screen if that check-in goes unanswered.
+   */
+  private phoneDeadline(state: JourneyState, now: number): void {
+    if (state.shownStatus === "check_in") {
+      state.shownStatus = "alerted";
+      this.endCheckIn(state);
+
+      return;
+    }
+
+    if (state.shownStatus !== "active") return;
+
+    const next = atArrivalDeadline({
+      now,
+      status: "active",
+      lostContactEnabled: state.lostContactEnabled,
+      lastHeardAt: state.lastHeardAt,
+    });
+
+    if (next === "lost_contact") {
+      state.shownStatus = "lost_contact";
+      state.deadlineAt = null;
+    } else {
       this.askCheckIn(state, "late", now);
     }
   }
@@ -599,9 +673,14 @@ export class JourneyObject extends DurableObject<Bindings> {
     state.wrongCodes = (recent ? state.wrongCodes : 0) + 1;
     state.wrongCodeAt = now;
 
-    // Someone guessing at the code during a check-in is no answer.
+    // Someone guessing at the code during a check-in is no answer. After a hidden duress PIN the circle
+    // already has the stronger alert, and the phone shows what an unanswered check-in would.
     if (state.wrongCodes >= JOURNEY_CODES.wrongTries && state.status === "check_in") {
       this.raiseAlert(state, "no_answer", now);
+    } else if (state.wrongCodes >= JOURNEY_CODES.wrongTries && hiddenDuress(state) && state.shownStatus === "check_in") {
+      state.shownStatus = "alerted";
+      state.deadlineAt = null;
+      this.endCheckIn(state);
     }
 
     await this.save(state);
@@ -664,6 +743,24 @@ export class JourneyObject extends DurableObject<Bindings> {
     if (next === null) await this.ctx.storage.deleteAlarm();
     else await this.ctx.storage.setAlarm(next);
   }
+}
+
+/**
+ * The duress PIN raised the alert and the phone was told nothing: it still
+ * shows the trip going on (or its own check-in), while the circle sees the
+ * alert.
+ */
+function hiddenDuress(state: JourneyState): boolean {
+  return state.status === "alerted" && state.alert?.reason === "duress" && state.shownStatus !== "alerted" && state.shownStatus !== "ended";
+}
+
+/**
+ * The journey is over as far as the phone knows: ended with the safe code,
+ * or with the duress PIN, which keeps it open for the circle. Either way the
+ * phone's token, check-ins and SOS answer as for an ended journey.
+ */
+function endedForPhone(state: JourneyState): boolean {
+  return state.status === "ended" || state.shownStatus === "ended";
 }
 
 /** The journey's next timer: its deadline, the next check-in call or the alert's climb to the hotline, whichever comes first. */
