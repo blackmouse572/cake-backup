@@ -221,11 +221,11 @@ const enter = (id: string, action: "answer" | "end", code: string, cookie: strin
   send(`/journeys/${id}/${action}`, "POST", { code }, { cookie });
 
 /** The raw tokens of the links sent for a journey can't be read back, so tests mint their own row. */
-async function linkFor(journeyId: string): Promise<string> {
+async function linkFor(journeyId: string, contactIndex = 0): Promise<string> {
   const contact = await env.DB.prepare(
-    "select c.id from circle_contacts c join journeys j on j.user_id = c.user_id where j.id = ? order by c.position",
+    "select c.id from circle_contacts c join journeys j on j.user_id = c.user_id where j.id = ? order by c.position limit 1 offset ?",
   )
-    .bind(journeyId)
+    .bind(journeyId, contactIndex)
     .first<{ id: string }>();
 
   const token = `test-${crypto.randomUUID()}`;
@@ -313,6 +313,53 @@ describe("the safety circle's links", () => {
 
     await api(`/circle/${contact!.id}`, { method: "DELETE", headers: { cookie: revoked.cookie } });
     expect((await openLink(revokedLink)).status).toBe(404);
+  });
+
+  it("answers a link with a changed, cut short or foreign token with 404", async () => {
+    const { journey } = await startJourney();
+    const other = await startJourney();
+    const token = await linkFor(journey.id);
+    expect((await openLink(token)).status).toBe(200);
+
+    const changed = `${token.slice(0, -1)}${token.endsWith("x") ? "y" : "x"}`;
+    expect((await openLink(changed)).status).toBe(404);
+    expect((await openLink(token.slice(0, -1))).status).toBe(404);
+    expect((await openLink(`${token}x`)).status).toBe(404);
+    expect((await openLink(await linkFor(other.journey.id))).status).toBe(200);
+  });
+
+  it("notes which contact opened their link, and when", async () => {
+    const { journey } = await startJourney();
+    const first = await linkFor(journey.id, 0);
+    const second = await linkFor(journey.id, 1);
+    const opened = "select count(*) as n from circle_links where journey_id = ? and opened_at is not null";
+    expect(await countRows(opened, journey.id)).toBe(0);
+
+    await circleView(first);
+    expect(await countRows(opened, journey.id)).toBe(1);
+
+    await circleView(second);
+    expect(await countRows(opened, journey.id)).toBe(2);
+  });
+
+  it("keeps the first time a contact opened their link", async () => {
+    const { journey } = await startJourney();
+    const token = await linkFor(journey.id);
+
+    const openedAt = async () =>
+      (
+        await env.DB.prepare("select opened_at as at from circle_links where token_hash = ?")
+          .bind(await hashToken(token))
+          .first<{ at: number | null }>()
+      )?.at;
+
+    await circleView(token);
+    const first = await openedAt();
+    expect(first).toBeGreaterThan(0);
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await circleView(token);
+    expect(await openedAt()).toBe(first);
   });
 
   it("moves an unopened alert to the hotline step after the timeout", async () => {

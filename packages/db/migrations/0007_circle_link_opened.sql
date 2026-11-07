@@ -1,0 +1,1 @@
+ALTER TABLE `circle_links` ADD `opened_at` integer;

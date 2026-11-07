@@ -19,7 +19,7 @@ export function circleLinksService(db: Db, objects: DurableObjectNamespace<Journ
   const circle = circleService(db);
 
   return {
-    /** Also counts as the contact having seen an alert, for the 10-minute rule. */
+    /** Also counts as the contact having seen an alert, for the 10-minute rule, and notes who opened it. */
     async open(token: string, now = Date.now()): Promise<Omit<CircleJourneyView, "demo"> | null> {
       const link = await links.findByHash(await hashToken(token));
 
@@ -33,6 +33,7 @@ export function circleLinksService(db: Db, objects: DurableObjectNamespace<Journ
 
       if (!view || view.status === "ended") return null;
       await stub.markOpened(now);
+      await links.markOpened(link.tokenHash, new Date(now));
       const account = await users.find(journey.userId);
 
       const phone = account?.phoneNumber ?? "";
