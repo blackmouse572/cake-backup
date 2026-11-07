@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node init && vite dev --port 3000",
-    "build": "node init && vite build",
+    "dev": "vite dev --port 3000",
+    "build": "vite build",
     "preview": "vite preview",
     "deploy:staging": "CLOUDFLARE_ENV=staging vite build && wrangler deploy",
     "deploy:demo": "CLOUDFLARE_ENV=demo vite build && wrangler deploy",

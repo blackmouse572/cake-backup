@@ -7,7 +7,7 @@
     ".": "./src/client.ts"
   },
   "scripts": {
-    "dev": "node init && wrangler dev",
+    "dev": "wrangler dev",
     "deploy:staging": "wrangler deploy --env staging",
     "db:migrate:staging": "wrangler d1 migrations apply cage-staging --env staging --remote",
     "deploy:demo": "wrangler deploy --env demo",

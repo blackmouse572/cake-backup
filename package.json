@@ -8,8 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "node init && turbo run dev",
-    "build": "node init && turbo run build",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "check": "turbo run lint typecheck test",

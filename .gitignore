@@ -9,4 +9,3 @@ dist/
 .DS_Store
 expo-env.d.ts
 .expo/
-config.bat
