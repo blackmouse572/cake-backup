@@ -67,7 +67,10 @@ These patterns are from general knowledge and still need checking against source
 
 ### Escalation ladder
 - Safety circle first, then a hotline or NGO (Tổng đài 111, Blue Dragon), then police (Công an 113) only if the user turned it on. For migrants or people without papers, police can be risky.
-- Ask for at least two circle contacts, ideally in different places. If nobody opens the alert within 10 minutes, Cage calls them, then moves to the hotline.
+- Ask for at least two circle contacts, ideally in different places. If nobody opens the alert within 10 minutes, Cage sends it to them again and moves to the hotline step: their page puts Tổng đài 111 and Blue Dragon first. Calling the circle by voice and alerting a hotline or NGO directly wait for a voice provider and a partner agreement.
+- Police (decided 2026-11-07, #18): Cage never calls police itself. The police step means the circle's page offers a Công an 113 button, and only when the traveller turned police on in settings. Off, the page offers Blue Dragon in its place.
+- One alert at a time. A stronger reason replaces the one already out and starts again at the circle: the duress PIN replaces anything, SOS replaces a missed check-in or lost contact, a missed check-in replaces lost contact. The same or a weaker reason adds nothing.
+- The circle opening their link stops the climb. Cancelling with the safe code stops it too; the duress PIN only looks like a cancel, so the ladder keeps going.
 - Contacts are picked from the phone book (only the people ticked leave the phone) or typed in. One contact is allowed but the app nudges for a second; the circle holds at most 10, each number once, never the traveller's own. The order on screen is the order they are told in.
 
 ### SOS and fake call
@@ -90,7 +93,7 @@ These patterns are from general knowledge and still need checking against source
 - Safety circle contacts don't need an account. Their link opens only that journey and stops working when it ends.
 - Once signed in, the app stays signed in. It never opens on a sign-in screen, which would give it away in disguise mode.
 - A session alone can't cancel an alert or end a journey. Both need the safe code, and the duress PIN works there too.
-- Signing out needs the safe code too (screen 20), so a thief holding a signed-in phone can't sign out to stop the alerts. The duress PIN gets exactly the same answer and the phone signs out, but the server keeps the session. Raising an alert for that PIN while a journey is open comes with the alert engine (#22), as it does for changing the codes. A traveller with no codes yet may sign out without one. The server answers Better Auth's own sign-out and revoke-session routes with 404, so the code can't be skipped.
+- Signing out needs the safe code too (screen 20), so a thief holding a signed-in phone can't sign out to stop the alerts. The duress PIN gets exactly the same answer and the phone signs out, but the server keeps the session and, if a journey is open, alerts its circle. The same goes for the duress PIN entered as the current code when changing the codes: nothing changes, and an open journey alerts its circle. A traveller with no codes yet may sign out without one. The server answers Better Auth's own sign-out and revoke-session routes with 404, so the code can't be skipped.
 - Settings (screen 20): the safety circle, changing the codes (the current safe code, then both new codes), the language and the police switch (off by default: for people without papers, police can be a risk). The check-in call (14) and disguise (18) rows show "coming soon" until those screens exist.
 - How it is built: [ADR 0002](adr/0002-sign-in.md).
 

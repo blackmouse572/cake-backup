@@ -5,6 +5,7 @@ import {
   atArrivalDeadline,
   checkInDeadline,
   likelyBatteryDied,
+  outranks,
   TIMERS,
   type AlertReason,
   type CircleJourneyView,
@@ -31,6 +32,8 @@ interface Alert {
   raisedAt: number;
   /** When someone in the circle first opened a link after the alert. */
   openedAt: number | null;
+  /** "hotline" once the ladder climbed. Missing on alerts raised before the ladder ran on the server. */
+  step?: "circle" | "hotline";
 }
 
 interface JourneyState {
@@ -56,6 +59,12 @@ interface JourneyState {
   /** When the server next looks at this journey on its own, or null. */
   deadlineAt: number | null;
   alert: Alert | null;
+  /**
+   * When the alert climbs to the hotline if nobody in the circle has opened
+   * their link by then (`TIMERS.circleOpenTimeoutMs`), or null. Missing on
+   * journeys started before the ladder ran on the server.
+   */
+  ladderAt?: number | null;
   /** Wrong codes on check-ins and at the end, until `JOURNEY_CODES.lockMs` passes without one. */
   wrongCodes: number;
   /** When the last wrong code was entered. Missing on journeys started before the lock. */
@@ -110,6 +119,7 @@ export class JourneyObject extends DurableObject<Bindings> {
       tokenHash,
       deadlineAt: arrivalDeadline(input.expectedArrivalAt),
       alert: null,
+      ladderAt: null,
       wrongCodes: 0,
       wrongCodeAt: null,
       syncedStatus: "active",
@@ -149,7 +159,7 @@ export class JourneyObject extends DurableObject<Bindings> {
   }
 
   /** The journey as the circle sees it, without the traveller's name (D1 has that). */
-  async circleView(now = Date.now()): Promise<Omit<CircleJourneyView, "travellerName" | "travellerPhone" | "demo"> | null> {
+  async circleView(now = Date.now()): Promise<Omit<CircleJourneyView, "travellerName" | "travellerPhone" | "demo" | "policeEnabled"> | null> {
     const state = await this.load();
 
     if (!state) return null;
@@ -158,18 +168,37 @@ export class JourneyObject extends DurableObject<Bindings> {
       ...travellerView(state),
       status: state.status,
       alert: state.alert
-        ? { reason: state.alert.reason, raisedAt: state.alert.raisedAt, step: alertStep(state.alert, now) }
+        ? {
+            reason: state.alert.reason,
+            raisedAt: state.alert.raisedAt,
+            // Once climbed, it stays; until the alarm runs, the clock already says where it is.
+            step: state.alert.step === "hotline" ? "hotline" : alertStep(state.alert, now),
+          }
         : null,
     };
   }
 
-  /** Someone in the circle opened their link. Counts for the 10-minute rule once an alert is out. */
+  /** Someone in the circle opened their link. Once an alert is out, that stops the climb to the hotline. */
   async markOpened(now = Date.now()): Promise<void> {
     const state = await this.load();
 
     if (!state?.alert || state.alert.openedAt !== null) return;
     state.alert.openedAt = now;
-    await this.ctx.storage.put(STATE, state);
+    state.ladderAt = null;
+    await this.save(state);
+  }
+
+  /**
+   * The duress PIN was entered somewhere other than this journey's own
+   * screens (changing the codes, signing out). The phone shows nothing; the
+   * circle is alerted.
+   */
+  async duress(now = Date.now()): Promise<void> {
+    const state = await this.load();
+
+    if (!state || state.status === "ended") return;
+    this.raiseAlert(state, "duress", now);
+    await this.save(state);
   }
 
   /**
@@ -216,6 +245,7 @@ export class JourneyObject extends DurableObject<Bindings> {
     } else {
       if (state.alert) state.outbox.push({ kind: "safe_now" });
       state.alert = null;
+      state.ladderAt = null;
       state.status = "active";
     }
 
@@ -248,6 +278,7 @@ export class JourneyObject extends DurableObject<Bindings> {
       if (state.alert) state.outbox.push({ kind: "safe_now" });
       state.status = "ended";
       state.alert = null;
+      state.ladderAt = null;
       // Location data is deleted when a journey ends (PRD, privacy). Saving to the journal comes with #32.
       state.lastUpdate = null;
     }
@@ -257,17 +288,20 @@ export class JourneyObject extends DurableObject<Bindings> {
     return "ok";
   }
 
-  /** Demo only: the next timer fires now instead of in 20 minutes. */
+  /** Demo only: the next timer (a deadline or the climb to the hotline) fires now instead of in 20 or 10 minutes. */
   async skipToDeadline(): Promise<void> {
     const state = await this.load();
+    const next = state ? nextTimer(state) : null;
 
-    if (!state || state.deadlineAt === null) return;
-    state.deadlineAt = Date.now();
+    if (!state || next === null) return;
+
+    if (next === state.deadlineAt) state.deadlineAt = Date.now();
+    else state.ladderAt = Date.now();
     await this.save(state);
   }
 
   /** Demo only: the trip as the dashboard sees it, the truth and what the phone shows. */
-  async demoView(now = Date.now()): Promise<Omit<DemoJourneyView, "travellerName" | "travellerPhone" | "circle" | "demo"> | null> {
+  async demoView(now = Date.now()): Promise<Omit<DemoJourneyView, "travellerName" | "travellerPhone" | "circle" | "demo" | "policeEnabled"> | null> {
     const view = await this.circleView(now);
     const state = await this.load();
 
@@ -315,6 +349,11 @@ export class JourneyObject extends DurableObject<Bindings> {
       this.onDeadline(state, now);
     }
 
+    if (state.ladderAt != null && now >= state.ladderAt) {
+      state.ladderAt = null;
+      this.climb(state);
+    }
+
     const outbox = state.outbox;
     const statusChanged = state.syncedStatus !== state.status;
     state.outbox = [];
@@ -351,14 +390,37 @@ export class JourneyObject extends DurableObject<Bindings> {
   }
 
   /**
-   * Alerts the circle once per journey. Lost contact stays "lost contact"
-   * (circle only, PRD); every other reason is an alert. The phone is told,
-   * except after the duress PIN.
+   * Nobody in the circle opened their link within 10 minutes: resend the
+   * alert to everyone and move to the hotline step, where the circle's page
+   * puts Tổng đài 111 and Blue Dragon first (#18). Nobody is called
+   * automatically; police are never more than a number on the page.
+   */
+  private climb(state: JourneyState): void {
+    const alert = state.alert;
+
+    if (!alert || alert.openedAt !== null || alert.step === "hotline") return;
+    alert.step = "hotline";
+
+    state.outbox.push({
+      kind: "alert",
+      reason: alert.reason,
+      step: "hotline",
+      likelyBatteryDied: alert.reason === "lost_contact" ? likelyBatteryDied(state.lastUpdate) : undefined,
+    });
+  }
+
+  /**
+   * Alerts the circle. Lost contact stays "lost contact" (circle only, PRD);
+   * every other reason is an alert and starts the 10-minute climb to the
+   * hotline. An alert already out is replaced only by a stronger reason (the
+   * duress PIN after a missed check-in), which starts over at the circle.
+   * The phone is told, except after the duress PIN.
    */
   private raiseAlert(state: JourneyState, reason: AlertReason, now: number): void {
-    if (state.alert) return;
-    state.alert = { reason, raisedAt: now, openedAt: null };
+    if (state.alert && !outranks(reason, state.alert.reason)) return;
+    state.alert = { reason, raisedAt: now, openedAt: null, step: "circle" };
     state.status = reason === "lost_contact" ? "lost_contact" : "alerted";
+    state.ladderAt = reason === "lost_contact" ? null : now + TIMERS.circleOpenTimeoutMs;
 
     if (reason !== "duress") {
       state.shownStatus = state.status;
@@ -423,15 +485,22 @@ export class JourneyObject extends DurableObject<Bindings> {
     return this.ctx.storage.get<JourneyState>(STATE);
   }
 
-  /** Stores the state and points the alarm at the next thing to do: the outbox now, or the next deadline. */
+  /** Stores the state and points the alarm at the next thing to do: the outbox now, or the next timer. */
   private async save(state: JourneyState): Promise<void> {
     await this.ctx.storage.put(STATE, state);
     const pending = state.outbox.length > 0 || state.syncedStatus !== state.status;
-    const next = pending ? Date.now() : state.deadlineAt;
+    const next = pending ? Date.now() : nextTimer(state);
 
     if (next === null) await this.ctx.storage.deleteAlarm();
     else await this.ctx.storage.setAlarm(next);
   }
+}
+
+/** The journey's next timer: its deadline or the alert's climb to the hotline, whichever comes first. */
+function nextTimer(state: JourneyState): number | null {
+  const timers = [state.deadlineAt, state.ladderAt ?? null].filter((t): t is number => t !== null);
+
+  return timers.length > 0 ? Math.min(...timers) : null;
 }
 
 /**

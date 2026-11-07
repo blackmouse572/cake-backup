@@ -664,3 +664,163 @@ describe("ending a journey", () => {
     expect((await enter(journey.id, "end", SAFE, other)).status).toBe(404);
   });
 });
+
+/** Moves the alert's 10-minute ladder timer to now and runs the alarm. */
+async function passLadder(id: string) {
+  const stub = stubFor(id);
+  await runInDurableObject(stub, async (_obj: JourneyObject, state) => {
+    const s = await state.storage.get<{ ladderAt: number | null }>("state");
+    expect(s?.ladderAt).not.toBeNull();
+    await state.storage.put("state", { ...s, ladderAt: Date.now() - 1 });
+    await state.storage.setAlarm(Date.now());
+  });
+  await runDurableObjectAlarm(stub);
+}
+
+const ladderAt = async (id: string) =>
+  runInDurableObject(stubFor(id), async (_obj: JourneyObject, state) =>
+    (await state.storage.get<{ ladderAt: number | null }>("state"))?.ladderAt ?? null,
+  );
+
+const alertSteps = async (id: string) =>
+  (
+    await env.DB.prepare("select reason, step from alert_events where journey_id = ? order by rowid").bind(id).all<{
+      reason: string;
+      step: string;
+    }>()
+  ).results;
+
+const messagesSent = (id: string) => countRows("select count(*) as n from demo_messages where journey_id = ?", id);
+
+/** A journey whose check-in went unanswered, with the alert sent to the circle. */
+async function unanswered() {
+  const started = await startJourney();
+  await api(`/journeys/${started.journey.id}/check-in`, { method: "POST", headers: { cookie: started.cookie } });
+  await passDeadline(started.journey.id);
+
+  return started;
+}
+
+describe("the escalation ladder", () => {
+  it("resends the alert and moves to the hotline when nobody opens it within 10 minutes", async () => {
+    const { journey } = await unanswered();
+    expect(await ladderAt(journey.id)).toBeGreaterThanOrEqual(Date.now() + 600_000 - 5_000);
+    const before = await messagesSent(journey.id);
+
+    await passLadder(journey.id);
+
+    expect(await messagesSent(journey.id)).toBe(before + 2);
+    expect(await alertSteps(journey.id)).toEqual([
+      { reason: "no_answer", step: "circle" },
+      { reason: "no_answer", step: "hotline" },
+    ]);
+    expect((await circleView(await linkFor(journey.id))).alert?.step).toBe("hotline");
+  });
+
+  it("stays at the hotline step once it has climbed, even after someone opens the link", async () => {
+    const { journey } = await unanswered();
+    await passLadder(journey.id);
+    const link = await linkFor(journey.id);
+    await circleView(link);
+
+    expect((await circleView(link)).alert?.step).toBe("hotline");
+  });
+
+  it("stops climbing once someone in the circle opens their link", async () => {
+    const { journey } = await unanswered();
+    await circleView(await linkFor(journey.id));
+
+    expect(await ladderAt(journey.id)).toBeNull();
+    expect(await alertSteps(journey.id)).toEqual([{ reason: "no_answer", step: "circle" }]);
+  });
+
+  it("never climbs past the circle on lost contact", async () => {
+    const { journey } = await startJourney();
+    await goQuiet(journey.id);
+    await passDeadline(journey.id);
+
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("lost_contact");
+    expect(await ladderAt(journey.id)).toBeNull();
+  });
+
+  it("stops the ladder when the safe code cancels the alert", async () => {
+    const { journey, cookie } = await unanswered();
+    expect((await enter(journey.id, "answer", SAFE, cookie)).status).toBe(204);
+
+    expect(await ladderAt(journey.id)).toBeNull();
+  });
+
+  it("keeps the ladder going after the duress PIN cancels the alert on the phone", async () => {
+    const { journey, cookie } = await unanswered();
+    expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
+
+    expect(await ladderAt(journey.id)).not.toBeNull();
+  });
+
+  it("turns an alert into a duress alert when the duress PIN comes after it, and tells the circle", async () => {
+    const { journey, cookie } = await unanswered();
+    const link = await linkFor(journey.id);
+    expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
+    await flush(journey.id);
+
+    expect((await travellerView(journey.id, cookie)).status).toBe("active");
+    expect((await circleView(link)).alert?.reason).toBe("duress");
+    expect(await alertSteps(journey.id)).toEqual([
+      { reason: "no_answer", step: "circle" },
+      { reason: "duress", step: "circle" },
+    ]);
+  });
+
+  it("doesn't send the circle a second alert for the same reason", async () => {
+    const { journey, cookie } = await startJourney();
+    expect((await enter(journey.id, "end", DURESS, cookie)).status).toBe(204);
+    await flush(journey.id);
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
+    await flush(journey.id);
+
+    expect(await alertSteps(journey.id)).toEqual([{ reason: "duress", step: "circle" }]);
+  });
+
+  it("tells the circle's page whether the traveller turned police on", async () => {
+    const { journey, cookie } = await unanswered();
+    const link = await linkFor(journey.id);
+    expect((await circleView(link)).policeEnabled).toBe(false);
+
+    const res = await api("/me/settings", {
+      method: "PUT",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ policeEnabled: true }),
+    });
+
+    expect(res.status).toBe(204);
+    expect((await circleView(link)).policeEnabled).toBe(true);
+  });
+});
+
+describe("the duress PIN outside a journey's own screens", () => {
+  it("alerts the circle when it is entered to change the codes mid-journey", async () => {
+    const { journey, cookie } = await startJourney();
+    const res = await send("/me/codes", "PUT", { safe: "1357", duress: "1368", current: DURESS }, { cookie });
+    expect(res.status).toBe(204);
+
+    expect((await travellerView(journey.id, cookie)).status).toBe("active");
+    expect((await circleView(await linkFor(journey.id))).alert?.reason).toBe("duress");
+  });
+
+  it("alerts the circle when it is entered to sign out mid-journey", async () => {
+    const { journey, cookie } = await startJourney();
+    const res = await send("/me/sign-out", "POST", { code: DURESS }, { cookie });
+    expect(res.status).toBe(204);
+
+    expect((await circleView(await linkFor(journey.id))).alert?.reason).toBe("duress");
+  });
+
+  it("leaves ended journeys alone", async () => {
+    const { journey, cookie } = await startJourney();
+    expect((await enter(journey.id, "end", SAFE, cookie)).status).toBe(204);
+    expect((await send("/me/codes", "PUT", { safe: "1357", duress: "1368", current: DURESS }, { cookie })).status).toBe(204);
+
+    expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
+  });
+});

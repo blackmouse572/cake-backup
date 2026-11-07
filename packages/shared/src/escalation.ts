@@ -26,6 +26,18 @@ export function ladderFor(reason: AlertReason, settings: EscalationSettings): Es
   return LADDER.filter((step) => step !== "police" || settings.policeEnabled);
 }
 
+/** Weakest first: silence, then a missed check-in, then SOS, then the duress PIN. */
+const STRENGTH: AlertReason[] = ["lost_contact", "no_answer", "sos", "duress"];
+
+/**
+ * True when a new reason should replace the alert already out: the duress
+ * PIN after a missed check-in, for example, tells the circle much more. The
+ * same reason or a weaker one adds nothing.
+ */
+export function outranks(next: AlertReason, current: AlertReason): boolean {
+  return STRENGTH.indexOf(next) > STRENGTH.indexOf(current);
+}
+
 /** The step after `current`, or null at the top of the ladder. */
 export function nextStep(
   current: EscalationStep,
@@ -41,7 +53,8 @@ export function nextStep(
 /**
  * Numbers the circle's page offers once an alert is out (#22, hotline step).
  * Nobody is called automatically: there is no partner agreement yet (PRD,
- * open questions).
+ * open questions). Police are offered only when the traveller turned them on,
+ * and Cage never calls them itself.
  */
 export const HOTLINES = {
   /** Tổng đài 111, the national child protection and anti-trafficking line. */

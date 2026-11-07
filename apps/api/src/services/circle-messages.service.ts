@@ -11,7 +11,8 @@ import { displayName, hashToken, newCircleLinkToken } from "../utils";
 /** What the journey object hands over to be sent to the circle. */
 export type CircleNotice =
   | { kind: "journey_started"; destination: string; arriveAt: number }
-  | { kind: "alert"; reason: AlertReason; likelyBatteryDied?: boolean }
+  /** `step` is "hotline" when nobody opened the first alert and it goes out again (#18). */
+  | { kind: "alert"; reason: AlertReason; likelyBatteryDied?: boolean; step?: "circle" | "hotline" }
   | { kind: "safe_now" };
 
 export interface JourneyRef {
@@ -44,7 +45,12 @@ export function circleMessagesService(db: Db, sender: MessageSender, webUrl: str
       const name = displayName(account?.name ?? "", account?.phoneNumber ?? "");
 
       if (notice.kind === "alert") {
-        await events.insert({ id: crypto.randomUUID(), journeyId: journey.id, reason: notice.reason, step: "circle" });
+        await events.insert({
+          id: crypto.randomUUID(),
+          journeyId: journey.id,
+          reason: notice.reason,
+          step: notice.step ?? "circle",
+        });
       }
 
       let sent = 0;

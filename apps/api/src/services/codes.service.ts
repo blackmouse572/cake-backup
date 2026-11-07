@@ -30,9 +30,12 @@ export type SignOutCheck = "safe" | "duress" | "no_codes" | "current_required" |
 
 export type ResetCodesResult = "ok" | CodeProblem | "reverify_required" | "journey_open";
 
-/** What the forgot-code path needs to know about journeys. */
+/** What the codes need from the traveller's journeys. */
 export interface OpenJourneys {
+  /** For the forgot-code path, which is refused mid-journey. */
   hasOpen(userId: string): Promise<boolean>;
+  /** The duress PIN was entered to change the codes or sign out: alert the circle of every open journey. */
+  alertDuress(userId: string): Promise<void>;
 }
 
 /** The safe code and duress PIN of one traveller. */
@@ -73,7 +76,7 @@ export function codesService(db: Db, pepper: string, journeys: OpenJourneys) {
      * Whether this traveller may sign out. Signing out needs the safe code,
      * so a thief holding a signed-in phone can't sign out to stop the alerts.
      * The duress PIN is told apart only here: the caller answers it like the
-     * safe code but keeps the session. With no codes set yet there is nothing
+     * safe code but keeps the session, and an open journey alerts the circle. With no codes set yet there is nothing
      * to protect, so the traveller may sign out without one.
      */
     async confirmSignOut(userId: string, code: string | undefined, now = Date.now()): Promise<SignOutCheck> {
@@ -84,6 +87,8 @@ export function codesService(db: Db, pepper: string, journeys: OpenJourneys) {
       if (!code) return "current_required";
       const check = await tryCode(userId, row, code, now);
 
+      if (check === "duress") await journeys.alertDuress(userId);
+
       return check === "wrong" ? "wrong_code" : check;
     },
 
@@ -91,7 +96,8 @@ export function codesService(db: Db, pepper: string, journeys: OpenJourneys) {
      * Sets the codes the first time, or changes them with the current safe
      * code. The duress PIN as the current code returns "ok" like the safe
      * code but changes nothing, so someone forcing the change learns nothing
-     * and the traveller's real codes keep working.
+     * and the traveller's real codes keep working; an open journey alerts
+     * the circle.
      */
     async set(userId: string, { safe, duress, current }: SetCodes, now = Date.now()): Promise<SetCodesResult> {
       const problem = codesProblem(safe, duress);
@@ -108,8 +114,12 @@ export function codesService(db: Db, pepper: string, journeys: OpenJourneys) {
 
         if (check === "wrong") return "wrong_code";
 
-        // Raising the alert for an active journey comes with the alert engine (#22).
-        if (check === "duress") return "ok";
+        // Nothing changes, and the circle of any open journey is alerted.
+        if (check === "duress") {
+          await journeys.alertDuress(userId);
+
+          return "ok";
+        }
       }
 
       const [safeCodeHash, duressCodeHash] = await Promise.all([hashCode(pepper, safe), hashCode(pepper, duress)]);

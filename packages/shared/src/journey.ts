@@ -97,13 +97,20 @@ export const CircleJourneyView = JourneyView.extend({
   travellerPhone: z.string(),
   /** True on the hackathon demo server: the page marks itself DEMO and turns its call and message buttons off. */
   demo: z.boolean().default(false),
+  /**
+   * The traveller turned police on (settings, off by default). Only then does
+   * the page offer Công an 113; Cage never calls police itself (PRD,
+   * "Escalation ladder").
+   */
+  policeEnabled: z.boolean().default(false),
   alert: z
     .object({
       reason: AlertReason,
       raisedAt: z.number(),
       /**
        * "hotline" once nobody in the circle opened their link within
-       * `TIMERS.circleOpenTimeoutMs`: the page then puts Tổng đài 111 first.
+       * `TIMERS.circleOpenTimeoutMs`: the server resends the alert and the
+       * page puts Tổng đài 111 first. It stays there once it has climbed.
        */
       step: z.enum(["circle", "hotline"]),
     })

@@ -251,11 +251,30 @@ function Alerted({ journey, locale, now }: ViewProps) {
         <Button href={sms(journey.travellerPhone)} icon="chat">
           {t("web.message", { name })}
         </Button>
-        <Button href={tel(HOTLINES.police)} icon="local_police">
-          {t("web.callPolice")}
-        </Button>
+        {journey.policeEnabled ? <PoliceButton /> : <BlueDragonButton />}
       </div>
     </>
+  );
+}
+
+/** Công an 113: offered only when the traveller turned police on (PRD, "Escalation ladder"). */
+function PoliceButton() {
+  const { t } = useTranslation();
+
+  return (
+    <Button href={tel(HOTLINES.police)} icon="local_police">
+      {t("web.callPolice")}
+    </Button>
+  );
+}
+
+function BlueDragonButton() {
+  const { t } = useTranslation();
+
+  return (
+    <Button href={tel(HOTLINES.blueDragon)} icon="volunteer_activism">
+      {t("web.blueDragon")}
+    </Button>
   );
 }
 
@@ -283,14 +302,14 @@ function Duress({ journey, locale, now }: ViewProps) {
       <Button href={tel(HOTLINES.national)} icon="support_agent" primary>
         {t("web.callHotline")}
       </Button>
-      <div className="pair">
-        <Button href={tel(HOTLINES.blueDragon)} icon="volunteer_activism">
-          {t("web.blueDragon")}
-        </Button>
-        <Button href={tel(HOTLINES.police)} icon="local_police">
-          {t("web.callPolice")}
-        </Button>
-      </div>
+      {journey.policeEnabled ? (
+        <div className="pair">
+          <BlueDragonButton />
+          <PoliceButton />
+        </div>
+      ) : (
+        <BlueDragonButton />
+      )}
     </>
   );
 }
