@@ -325,7 +325,11 @@
   "onRoute": {
     "arrive": "dự kiến đến",
     "left": "Còn {{minutes}} phút",
-    "sharing": "Vòng an toàn đang thấy vị trí của bạn"
+    "sharing": "Vòng an toàn đang thấy vị trí của bạn",
+    "sos": "Giữ để báo SOS",
+    "sosHint": "Giữ 1 giây để báo vòng an toàn ngay",
+    "sosSending": "Đang báo vòng an toàn",
+    "sosFailed": "Chưa gửi được SOS. Kiểm tra mạng rồi giữ lại."
   },
   "ask": {
     "autoAlert": "Hết giờ mà chưa trả lời, Cage sẽ báo vòng an toàn.",

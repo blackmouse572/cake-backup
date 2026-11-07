@@ -15,9 +15,12 @@ export interface CodeEntry {
   submit: string | null;
 }
 
+/** Where an SOS stands: not pressed, on its way, or not delivered (the traveller can hold again). */
+export type SosState = "idle" | "sending" | "failed";
+
 export type JourneyFlow =
   | { name: "plan"; busy: boolean; problem: PlanProblem | null }
-  | { name: "travelling"; journey: JourneyView; token: string; code: CodeEntry | null }
+  | { name: "travelling"; journey: JourneyView; token: string; code: CodeEntry | null; sos: SosState }
   | { name: "ended" };
 
 export type JourneyAction =
@@ -32,6 +35,10 @@ export type JourneyAction =
   | { type: "digit"; digit: string }
   | { type: "delete" }
   | { type: "codeResult"; result: "ok" | CodeProblem }
+  | { type: "sosSending" }
+  | { type: "sosFailed" }
+  /** The server answered. The phone may still show a quiet screen (after a duress PIN), so it stops waiting here, not on "alerted". */
+  | { type: "sosSent" }
   | { type: "newTrip" };
 
 export const initialJourneyFlow: JourneyFlow = { name: "plan", busy: false, problem: null };
@@ -48,7 +55,7 @@ export function journeyReducer(state: JourneyFlow, action: JourneyAction): Journ
     case "startFailed":
       return { name: "plan", busy: false, problem: action.problem };
     case "started":
-      return { name: "travelling", journey: action.journey, token: action.token, code: null };
+      return { name: "travelling", journey: action.journey, token: action.token, code: null, sos: "idle" };
     case "newTrip":
       return initialJourneyFlow;
     default:
@@ -59,7 +66,17 @@ export function journeyReducer(state: JourneyFlow, action: JourneyAction): Journ
     case "gone":
       return { name: "ended" };
     case "view":
-      return action.journey.status === "ended" ? { name: "ended" } : { ...state, journey: action.journey };
+      if (action.journey.status === "ended") return { name: "ended" };
+
+      // Once the alert shows, the SOS is no longer pending.
+      return { ...state, journey: action.journey, sos: action.journey.status === "alerted" ? "idle" : state.sos };
+    case "sosSending":
+      return state.sos === "sending" ? state : { ...state, sos: "sending" };
+    case "sosSent":
+      return { ...state, sos: "idle" };
+    case "sosFailed":
+      // A poll may have shown the alert already; then there is nothing to retry.
+      return { ...state, sos: state.journey.status === "alerted" ? "idle" : "failed" };
     case "openCode":
       return { ...state, code: { purpose: action.purpose, entry: "", problem: null, submit: null } };
     case "closeCode":

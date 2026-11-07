@@ -13,6 +13,8 @@ export const TIMERS = {
   checkInRetryMs: 2 * 60_000,
   /** If nobody in the circle opens the alert within this time, move up the ladder. */
   circleOpenTimeoutMs: 10 * 60_000,
+  /** How long SOS must be held before it raises the alert, so a pocket press can't (PRD, "SOS and fake call"). */
+  sosHoldMs: 1_000,
 } as const;
 
 /** Battery at or below this, followed by silence, reads as "phone probably died". */
