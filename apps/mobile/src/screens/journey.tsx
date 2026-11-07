@@ -1,4 +1,4 @@
-import { formatTime, isLocale, LOCALE_NAMES, LOCALES, type Locale } from "@cage/i18n";
+import { formatTime, isLocale, LOCALES, type Locale } from "@cage/i18n";
 import { CODE_LENGTH, TIMERS, type JourneyView } from "@cage/shared";
 import { layout, space } from "@cage/ui-tokens";
 import { useEffect, useReducer, useState } from "react";
@@ -8,7 +8,7 @@ import { setLocale, useTranslation } from "../i18n";
 import { currentJourney, enterCode, fetchJourney, forgetJourney, sendUpdate, startJourney } from "../services/journey.service";
 import { allowLocation, findPlace, watchReadings } from "../services/places.service";
 import { color, radius, text } from "../theme";
-import { Caption, CodeDots, GhostButton, Keypad, Note, PrimaryButton, Screen, Title } from "../ui";
+import { BackBar, Caption, CodeDots, Icon, IconButton, IconLine, Keypad, Note, PrimaryButton, Screen, Title } from "../ui";
 import { initialJourneyFlow, journeyReducer, type CodeEntry, type JourneyAction } from "./journey.reducer";
 
 /** How often the open app asks the server what to show (a check-in, an alert). Quicker in the demo build, so the stage keeps up with the dashboard. */
@@ -179,34 +179,30 @@ function PlanView({
       <View style={styles.top}>
         <Text style={text("brandHeader")}>{t("app.name")}</Text>
         <View style={styles.topActions}>
-          {LOCALES.map((l) => (
-            <Pressable
-              key={l}
-              accessibilityRole="button"
-              accessibilityState={{ selected: l === locale }}
-              onPress={() => setLocale(l)}
-              style={[styles.chip, l === locale && styles.chipOn]}
-            >
-              <Text style={[text("caption"), l === locale && { color: color.onFg }]}>{LOCALE_NAMES[l]}</Text>
-            </Pressable>
-          ))}
+          <IconButton
+            icon="translate"
+            label={t("common.language")}
+            onPress={() => setLocale(LOCALES.find((l) => l !== locale) ?? locale)}
+          />
+          <IconButton icon="group" label={t("circle.name")} onPress={onCircle} />
         </View>
       </View>
       <Title>{t("plan.title")}</Title>
-      <View style={styles.field}>
-        <Text style={[text("caption"), { color: color.fgSecondary }]}>{t("plan.destination")}</Text>
+      <View style={styles.input}>
+        <Icon name="location_on" tint={color.fgSecondary} />
         <TextInput
+          accessibilityLabel={t("plan.destination")}
           value={destination}
           onChangeText={setDestination}
           placeholder={t("plan.destinationHint")}
           placeholderTextColor={color.fgTertiary}
-          style={styles.input}
+          style={styles.inputText}
           autoCorrect={false}
           returnKeyType="done"
         />
       </View>
-      <Text style={[text("caption"), { color: color.fgSecondary, marginTop: space[5] }]}>{t("plan.arriveIn")}</Text>
-      <View style={styles.chips} accessibilityRole="radiogroup">
+      <View style={[styles.chips, { marginTop: space[5] }]} accessibilityRole="radiogroup" accessibilityLabel={t("plan.arriveIn")}>
+        <Icon name="schedule" tint={color.fgSecondary} />
         {ARRIVAL_CHOICES.map((m) => (
           <Pressable
             key={m}
@@ -219,12 +215,10 @@ function PlanView({
           </Pressable>
         ))}
       </View>
-      <View style={styles.card}>
-        <Text style={[text("body"), { fontWeight: "500" }]}>{t("plan.checkNote")}</Text>
-        <Text style={[text("caption"), { color: color.fgSecondary }]}>{t("plan.checkNoteBody")}</Text>
+      <View style={{ marginTop: space[6] }}>
+        <IconLine icon="notifications">{t("plan.checkNote")}</IconLine>
       </View>
       {problem ? <Note tone="danger">{t(problems[problem])}</Note> : null}
-      <GhostButton label={t("circle.name")} onPress={onCircle} />
     </Screen>
   );
 }
@@ -250,18 +244,12 @@ function TravellingView({
 
     return (
       <Screen footer={<PrimaryButton label={t("checkIn.imSafe")} onPress={() => dispatch({ type: "openCode", purpose: "answer" })} />}>
-        <View style={[styles.chipStatus, { backgroundColor: color.warningTint }]}>
-          <Text style={[text("caption"), { color: color.warningText }]}>{t("journey.status.check_in")}</Text>
-        </View>
-        <Title style={{ marginTop: space[4] }}>{t("checkIn.question")}</Title>
-        <Caption>{t("ask.body")}</Caption>
+        <Title style={{ marginTop: space[7] }}>{t("checkIn.question")}</Title>
         <View style={styles.countdown}>
           <Text style={styles.seconds}>{seconds}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[text("body"), { fontWeight: "500" }]}>{t("ask.secondsLeft")}</Text>
-            <Text style={[text("caption"), { color: color.fgSecondary }]}>{t("ask.autoAlert")}</Text>
-          </View>
+          <Text style={[text("title"), { color: color.fgSecondary }]}>{t("ask.seconds")}</Text>
         </View>
+        <IconLine icon="notifications">{t("ask.autoAlert")}</IconLine>
       </Screen>
     );
   }
@@ -271,11 +259,11 @@ function TravellingView({
 
     return (
       <Screen footer={<PrimaryButton label={t("checkIn.imSafe")} onPress={() => dispatch({ type: "openCode", purpose: "answer" })} />}>
-        <View style={[styles.chipStatus, { backgroundColor: color.dangerTint }]}>
-          <Text style={[text("caption"), { color: color.dangerText }]}>{t(`journey.status.${journey.status}`)}</Text>
+        <View style={[styles.badge, { backgroundColor: color.dangerTint }]}>
+          <Icon name={lost ? "wifi_off" : "notifications"} size={28} tint={color.dangerText} />
         </View>
-        <Title style={{ marginTop: space[4] }}>{t(lost ? "alerted.lostTitle" : "alerted.title")}</Title>
-        <Caption>{lost ? t("alerted.lostBody") : t("alerted.body", { time: formatTime(now, locale) })}</Caption>
+        <Title style={{ marginTop: space[5] }}>{t(lost ? "alerted.lostTitle" : "alerted.title")}</Title>
+        <Caption>{t(lost ? "alerted.lostBody" : "alerted.body")}</Caption>
       </Screen>
     );
   }
@@ -284,17 +272,15 @@ function TravellingView({
 
   return (
     <Screen footer={<PrimaryButton label={t("journey.end")} onPress={() => dispatch({ type: "openCode", purpose: "end" })} />}>
-      <View style={[styles.chipStatus, { backgroundColor: color.successTint }]}>
-        <Text style={[text("caption"), { color: color.successText }]}>{t("journey.status.active")}</Text>
-      </View>
       <View style={styles.arrival}>
         <Text style={styles.arrivalTime}>{formatTime(journey.expectedArrivalAt, locale)}</Text>
         <Text style={[text("title"), { color: color.fgSecondary }]}>{t("onRoute.arrive")}</Text>
       </View>
-      <Text style={[text("body"), { color: color.fgSecondary }]}>
-        {journey.destination.name} · {t("onRoute.left", { minutes: minutesLeft })}
-      </Text>
-      <Note tone="info">{t("onRoute.sharing")}</Note>
+      <Text style={[text("body"), { color: color.fgSecondary }]}>{t("onRoute.left", { minutes: minutesLeft })}</Text>
+      <View style={styles.lines}>
+        <IconLine icon="location_on">{journey.destination.name}</IconLine>
+        <IconLine icon="group">{t("onRoute.sharing")}</IconLine>
+      </View>
     </Screen>
   );
 }
@@ -327,22 +313,14 @@ function CodeView({
         </>
       }
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t("common.close")}
-        onPress={() => dispatch({ type: "closeCode" })}
-        hitSlop={12}
-        style={styles.close}
-      >
-        <Text style={{ fontSize: 22, color: color.fgPrimary }}>✕</Text>
-      </Pressable>
+      <BackBar close onBack={() => dispatch({ type: "closeCode" })} />
       <Title>{t(answering ? "enterCode.title" : "enterCode.endTitle")}</Title>
-      <Caption>{t(answering ? "enterCode.body" : "enterCode.endBody")}</Caption>
+      {answering ? null : <Caption>{t("enterCode.endBody")}</Caption>}
       <View style={{ marginTop: space[7], alignItems: "center", gap: space[3] }}>
         <CodeDots length={CODE_LENGTH} filled={code.entry.length} />
-        <Text style={[text("caption"), { color: color.fgSecondary }]}>
-          {answering && journey.status === "check_in" ? t("enterCode.left", { count: seconds }) : t("enterCode.typeFour")}
-        </Text>
+        {answering && journey.status === "check_in" ? (
+          <Text style={[text("caption"), { color: color.fgSecondary }]}>{t("enterCode.left", { count: seconds })}</Text>
+        ) : null}
       </View>
       {code.problem ? <Note tone="danger">{t(problems[code.problem])}</Note> : null}
     </Screen>
@@ -354,7 +332,10 @@ function EndedView({ onNewTrip }: { onNewTrip: () => void }) {
 
   return (
     <Screen footer={<PrimaryButton label={t("arrived.again")} onPress={onNewTrip} />}>
-      <Title style={{ marginTop: space[7] }}>{t("arrived.title")}</Title>
+      <View style={[styles.badge, { backgroundColor: color.successTint, marginTop: space[7] }]}>
+        <Icon name="flag" size={28} tint={color.successText} />
+      </View>
+      <Title style={{ marginTop: space[5] }}>{t("arrived.title")}</Title>
       <Caption>{t("arrived.body")}</Caption>
     </Screen>
   );
@@ -363,45 +344,27 @@ function EndedView({ onNewTrip }: { onNewTrip: () => void }) {
 const styles = StyleSheet.create({
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space[5] },
   topActions: { flexDirection: "row", gap: space[2] },
-  field: { marginTop: space[5], gap: space[2] },
   input: {
-    height: layout.buttonHeight.lg,
-    borderRadius: radius.sm,
+    marginTop: space[5],
+    height: layout.buttonHeight.lg + 8,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: color.borderStrong,
     paddingHorizontal: space[4],
-    fontSize: 17,
-    color: color.fgPrimary,
     backgroundColor: color.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space[3],
   },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: space[2], marginTop: space[2] },
+  inputText: { flex: 1, height: "100%", fontSize: 17, color: color.fgPrimary },
+  chips: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space[2] },
   chip: { paddingHorizontal: space[3], paddingVertical: 6, borderRadius: radius.sm, backgroundColor: color.chip },
   chipOn: { backgroundColor: color.surfaceInverse },
-  chipStatus: { alignSelf: "flex-start", paddingHorizontal: space[3], paddingVertical: 6, borderRadius: radius.sm },
-  card: {
-    marginTop: space[5],
-    padding: space[4],
-    borderRadius: radius.md,
-    backgroundColor: color.surfaceSunken,
-    borderWidth: 1,
-    borderColor: color.border,
-    gap: 2,
-  },
-  arrival: { flexDirection: "row", alignItems: "baseline", gap: space[2], marginTop: space[4] },
-  arrivalTime: { fontSize: 40, lineHeight: 48, fontWeight: "500", color: color.fgPrimary },
-  countdown: { flexDirection: "row", alignItems: "center", gap: space[4], marginTop: space[6] },
-  seconds: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 8,
-    borderColor: color.blueTint,
-    textAlign: "center",
-    textAlignVertical: "center",
-    lineHeight: 80,
-    fontSize: 34,
-    color: color.fgPrimary,
-  },
-  close: { height: 44, justifyContent: "center", marginBottom: space[3] },
-  forgot: { textAlign: "center", color: color.fgSecondary, fontSize: 14, marginBottom: space[3] },
+  badge: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginTop: space[7] },
+  arrival: { flexDirection: "row", alignItems: "baseline", gap: space[2], marginTop: space[7] },
+  arrivalTime: { fontSize: 48, lineHeight: 56, fontWeight: "500", color: color.fgPrimary },
+  lines: { marginTop: space[6], gap: space[3] },
+  countdown: { flexDirection: "row", alignItems: "baseline", gap: space[2], marginTop: space[5], marginBottom: space[5] },
+  seconds: { fontSize: 64, lineHeight: 72, fontWeight: "500", color: color.fgPrimary, fontVariant: ["tabular-nums"] },
+  forgot: { textAlign: "center", color: color.fgSecondary, marginBottom: space[3] },
 });

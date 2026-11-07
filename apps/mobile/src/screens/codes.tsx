@@ -15,7 +15,7 @@ interface CodeSteps {
   total: number;
 }
 
-const ONBOARDING_STEPS: CodeSteps = { safe: 3, duress: 4, total: 5 };
+const ONBOARDING_STEPS: CodeSteps = { safe: 4, duress: 5, total: 5 };
 
 /**
  * Screens 10 and 10b. The flow lives in `codesReducer`; this component only
@@ -71,10 +71,9 @@ export function SetCodesFlow({
       <StepNav step={isSafe ? steps.safe : steps.duress} total={steps.total} onBack={back} />
       <Title>{t(isSafe ? "codes.safe.title" : "codes.duress.title")}</Title>
       <Caption>{t(isSafe ? "codes.safe.body" : "codes.duress.body")}</Caption>
-      {isSafe ? null : <Note tone="warning">{t("codes.duress.hint")}</Note>}
       <View style={{ marginTop: space[7], alignItems: "center", gap: space[3] }}>
         <CodeDots length={CODE_LENGTH} filled={entry.length} />
-        <Text style={[text("caption"), { fontSize: 14, color: color.fgSecondary }]}>
+        <Text style={[text("caption"), { color: color.fgSecondary }]}>
           {t(first === null ? "codes.enter" : "codes.confirm")}
         </Text>
       </View>

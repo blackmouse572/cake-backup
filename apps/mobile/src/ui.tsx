@@ -1,6 +1,7 @@
 import { layout, space } from "@cage/ui-tokens";
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View, type TextStyle } from "react-native";
+import symbolsFont from "../assets/fonts/material-symbols.ttf";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DEMO } from "./auth";
 import { useTranslation } from "./i18n";
@@ -32,7 +33,74 @@ function DemoPill() {
   );
 }
 
-/** Back arrow, progress bars and "n/5", as on screens 08a–11. */
+/** The Material Symbols Outlined subset in `assets/fonts` (weight 300, 20 pt), loaded in App.tsx. */
+export const ICON_FONT = { MaterialSymbols: symbolsFont };
+
+/** Codepoints of the glyphs in that subset. Add a name here and to the font together. */
+const GLYPHS = {
+  arrow_back: 0xe5c4,
+  arrow_downward: 0xe5db,
+  arrow_upward: 0xe5d8,
+  backspace: 0xe14a,
+  check: 0xe668,
+  check_circle: 0xf0be,
+  close: 0xe5cd,
+  contacts: 0xe0ba,
+  dialpad: 0xe0bc,
+  error: 0xf8b6,
+  flag: 0xf0c6,
+  group: 0xea21,
+  info: 0xe88e,
+  location_on: 0xf1db,
+  lock: 0xe899,
+  notifications: 0xe7f5,
+  person_add: 0xea4d,
+  schedule: 0xefd6,
+  translate: 0xe8e2,
+  wifi_off: 0xe648,
+} as const;
+
+export type IconName = keyof typeof GLYPHS;
+
+export function Icon({ name, size = 20, tint = color.fgTertiary }: { name: IconName; size?: number; tint?: string }) {
+  return (
+    <Text
+      accessible={false}
+      style={{ fontFamily: "MaterialSymbols", fontSize: size, lineHeight: size, width: size, color: tint }}
+    >
+      {String.fromCodePoint(GLYPHS[name])}
+    </Text>
+  );
+}
+
+/** A round icon-only button for top bars and rows; `label` is what a screen reader says. */
+export function IconButton({
+  icon,
+  label,
+  onPress,
+  disabled = false,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      hitSlop={6}
+      style={({ pressed }) => [styles.iconButton, (disabled || pressed) && { opacity: disabled ? 0.3 : 0.6 }]}
+    >
+      <Icon name={icon} size={22} tint={color.fgPrimary} />
+    </Pressable>
+  );
+}
+
+/** Back arrow and progress bars, as on screens 08a–11. */
 export function StepNav({ step, total = 5, onBack }: { step: number; total?: number; onBack?: () => void }) {
   const { t } = useTranslation();
 
@@ -40,15 +108,42 @@ export function StepNav({ step, total = 5, onBack }: { step: number; total?: num
     <View style={styles.nav}>
       {onBack ? (
         <Pressable accessibilityRole="button" accessibilityLabel={t("common.back")} onPress={onBack} hitSlop={12}>
-          <Text style={styles.back}>←</Text>
+          <Icon name="arrow_back" size={24} tint={color.fgPrimary} />
         </Pressable>
       ) : null}
-      <View style={styles.prog} accessibilityLabel={t("common.step", { step, total })}>
+      <View style={styles.prog} accessible accessibilityLabel={t("common.step", { step, total })}>
         {Array.from({ length: total }, (_, i) => (
           <View key={i} style={[styles.bar, i < step && styles.barOn]} />
         ))}
       </View>
-      <Text style={[text("caption"), styles.count]}>{t("common.step", { step, total })}</Text>
+    </View>
+  );
+}
+
+/** A top bar with a back arrow, for screens opened from home. */
+export function BackBar({ onBack, close = false }: { onBack: () => void; close?: boolean }) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.nav}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t(close ? "common.close" : "common.back")}
+        onPress={onBack}
+        hitSlop={12}
+      >
+        <Icon name={close ? "close" : "arrow_back"} size={24} tint={color.fgPrimary} />
+      </Pressable>
+    </View>
+  );
+}
+
+/** One line of quiet information with an icon in front, instead of a tinted box. */
+export function IconLine({ icon, children, tint = color.fgSecondary }: { icon: IconName; children: ReactNode; tint?: string }) {
+  return (
+    <View style={styles.iconLine}>
+      <Icon name={icon} tint={tint} />
+      <Text style={[text("caption"), { flex: 1, color: tint }]}>{children}</Text>
     </View>
   );
 }
@@ -96,41 +191,15 @@ export function GhostButton({ label, onPress, disabled }: ButtonProps) {
   );
 }
 
-/** A tinted group holding a white card of rows (`.grp` > `.card` > `.it`). */
-export function InfoGroup({ heading, rows }: { heading?: string; rows: { title: string; body: string; done?: boolean }[] }) {
-  return (
-    <View style={styles.group}>
-      {heading ? <Text style={[text("body"), { paddingHorizontal: space[2], paddingBottom: 10 }]}>{heading}</Text> : null}
-      <View style={styles.card}>
-        {rows.map((row, i) => (
-          <View key={row.title} style={[styles.row, i > 0 && styles.rowDivider]}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={[text("body"), { fontWeight: "500" }]}>{row.title}</Text>
-              <Text style={[text("caption"), { color: color.fgSecondary, fontSize: 14, lineHeight: 19 }]}>
-                {row.body}
-              </Text>
-            </View>
-            {row.done ? <Text style={{ color: color.success, fontSize: 20 }}>✓</Text> : null}
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/** A short status note: tone sets the status colour (warning for hints, danger for errors). */
-export function Note({ tone, children }: { tone: "warning" | "danger" | "info"; children: ReactNode }) {
-  const tones = {
-    warning: [color.warningTint, color.warningText],
-    danger: [color.dangerTint, color.dangerText],
-    info: [color.infoTint, color.infoText],
-  } as const;
-
-  const [bg, fg] = tones[tone];
+/** Something went wrong (danger) or a choice needs a word (info): one short line with an icon. */
+export function Note({ tone, children }: { tone: "danger" | "info"; children: ReactNode }) {
+  const danger = tone === "danger";
 
   return (
-    <View accessibilityLiveRegion="polite" style={[styles.note, { backgroundColor: bg }]}>
-      <Text style={[text("caption"), { color: fg, fontSize: 14 }]}>{children}</Text>
+    <View accessibilityLiveRegion="polite" style={styles.note}>
+      <IconLine icon={danger ? "error" : "info"} tint={danger ? color.dangerText : color.fgSecondary}>
+        {children}
+      </IconLine>
     </View>
   );
 }
@@ -165,7 +234,11 @@ export function Keypad({ onDigit, onDelete }: { onDigit: (d: string) => void; on
             onPress={() => (k === "del" ? onDelete() : onDigit(k))}
             style={({ pressed }) => [styles.key, k !== "del" && styles.keyFilled, pressed && { opacity: 0.6 }]}
           >
-            <Text style={{ fontSize: 28, color: color.fgPrimary }}>{k === "del" ? "⌫" : k}</Text>
+            {k === "del" ? (
+              <Icon name="backspace" size={26} tint={color.fgPrimary} />
+            ) : (
+              <Text style={{ fontSize: 28, color: color.fgPrimary }}>{k}</Text>
+            )}
           </Pressable>
         ),
       )}
@@ -188,11 +261,18 @@ const styles = StyleSheet.create({
   page: { flex: 1, paddingHorizontal: space[5], paddingTop: space[2] },
   footer: { paddingHorizontal: space[5], paddingBottom: space[2], gap: 6 },
   nav: { flexDirection: "row", alignItems: "center", gap: space[4], height: 44, marginBottom: space[3] },
-  back: { fontSize: 24, color: color.fgPrimary },
   prog: { flex: 1, flexDirection: "row", gap: 6 },
   bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: color.track },
   barOn: { backgroundColor: color.fgPrimary },
-  count: { fontSize: 14, fontWeight: "500", color: color.fgSecondary },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: color.chip,
+  },
+  iconLine: { flexDirection: "row", alignItems: "center", gap: space[2] },
   primary: {
     height: layout.buttonHeight.lg,
     borderRadius: radius.lg,
@@ -203,11 +283,7 @@ const styles = StyleSheet.create({
     gap: space[2],
   },
   ghost: { height: layout.buttonHeight.lg, alignItems: "center", justifyContent: "center" },
-  group: { backgroundColor: color.surfaceHover, borderRadius: 28, padding: space[3], marginTop: space[5] },
-  card: { backgroundColor: color.surface, borderRadius: radius.md, paddingHorizontal: space[4] },
-  row: { flexDirection: "row", alignItems: "center", gap: space[3], paddingVertical: space[3] },
-  rowDivider: { borderTopWidth: 1, borderStyle: "dashed", borderTopColor: color.divider },
-  note: { marginTop: space[4], paddingVertical: space[3], paddingHorizontal: 14, borderRadius: radius.sm },
+  note: { marginTop: space[4] },
   dots: { flexDirection: "row", gap: 18, justifyContent: "center" },
   dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, borderColor: color.borderStrong },
   dotOn: { backgroundColor: color.fgPrimary, borderColor: color.fgPrimary },

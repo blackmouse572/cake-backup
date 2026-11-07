@@ -1,4 +1,4 @@
-import { CIRCLE, formatPhone, moveId, TIMERS, toE164, type CircleContact } from "@cage/shared";
+import { CIRCLE, formatPhone, moveId, toE164, type CircleContact } from "@cage/shared";
 import { layout, space } from "@cage/ui-tokens";
 import { useForm } from "@tanstack/react-form";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
@@ -19,12 +19,12 @@ import { useTranslation } from "../i18n";
 import { addContacts, fetchCircle, removeContact, reorderCircle } from "../services/circle.service";
 import { contactsAccess, readPhoneContacts, requestContactsAccess } from "../services/phone-contacts.service";
 import { color, radius, text } from "../theme";
-import { Caption, GhostButton, InfoGroup, Note, PrimaryButton, Screen, StepNav, Title } from "../ui";
+import { BackBar, Caption, GhostButton, Icon, IconButton, Note, PrimaryButton, Screen, StepNav, Title } from "../ui";
 import { circleReducer, initialCircleState, needsNudge, roomLeft, type CircleProblem } from "./circle.reducer";
 import { initialPickerState, pickerReducer, pickerSections, type PhoneContact } from "./contact-picker";
 
 /**
- * The safety circle: screen 09 in onboarding (step 2 of 5) and screen 05
+ * The safety circle: screen 09 in onboarding (step 3 of 5) and screen 05
  * from the app. Contacts come from the phone book (09a, 09b) or are typed
  * in. The order on screen is the alert order.
  */
@@ -110,12 +110,6 @@ export function CircleScreen({
 
   const onboarding = mode === "onboarding";
 
-  const ladder = [
-    { title: t("circle.ladder.hotline"), body: t("circle.ladder.hotlineBody") },
-    { title: t("circle.ladder.ngo"), body: t("circle.ladder.ngoBody") },
-    { title: t("circle.ladder.police"), body: t("circle.ladder.policeBody") },
-  ];
-
   return (
     <Screen
       footer={
@@ -124,74 +118,54 @@ export function CircleScreen({
         ) : undefined
       }
     >
-      {onboarding ? (
-        <StepNav step={2} onBack={onBack} />
-      ) : (
-        <View style={styles.topBar}>
-          {onBack ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={t("common.back")} onPress={onBack} hitSlop={12}>
-              <Text style={styles.backArrow}>←</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      )}
+      {onboarding ? <StepNav step={3} onBack={onBack} /> : onBack ? <BackBar onBack={onBack} /> : null}
       <ScrollView contentContainerStyle={{ paddingBottom: space[6] }} showsVerticalScrollIndicator={false}>
-        <Title>{t(onboarding ? "circle.onboarding.title" : "circle.settings.title")}</Title>
-        {onboarding ? <Caption>{t("circle.onboarding.body")}</Caption> : null}
-        <View style={styles.group}>
-          <View style={styles.groupHead}>
-            <Text style={[text("body"), { flex: 1, fontSize: 17 }]}>
-              {t(onboarding ? "circle.name" : "circle.settings.heading")}
-            </Text>
+        <Title>{t(onboarding ? "circle.onboarding.title" : "circle.name")}</Title>
+        <Caption>{t("circle.body")}</Caption>
+        <View style={styles.card}>
+          {status === "loading" ? (
+            <View style={styles.row}>
+              <ActivityIndicator color={color.fgPrimary} />
+            </View>
+          ) : status === "failed" ? (
+            <View style={[styles.row, { flexDirection: "column", alignItems: "stretch" }]}>
+              <Text style={[text("caption"), { color: color.fgSecondary }]}>{t("circle.errors.load")}</Text>
+              <GhostButton label={t("common.retry")} onPress={() => void load()} />
+            </View>
+          ) : (
+            contacts.map((c, i) => (
+              <ContactRow
+                key={c.id}
+                contact={c}
+                first={i === 0}
+                last={i === contacts.length - 1}
+                disabled={busy}
+                onMove={(direction) => void move(c, direction)}
+                onRemove={() => confirmRemove(c)}
+              />
+            ))
+          )}
+          {status === "ready" ? (
             <Pressable
               accessibilityRole="button"
-              disabled={busy || status !== "ready" || roomLeft(state) === 0}
+              disabled={busy || roomLeft(state) === 0}
               onPress={() => void fromContacts()}
-              style={({ pressed }) => [styles.smallButton, pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [
+                styles.row,
+                contacts.length > 0 && styles.rowDivider,
+                (pressed || roomLeft(state) === 0) && { opacity: 0.5 },
+              ]}
             >
-              <Text style={[text("caption"), { color: color.fgPrimary, fontSize: 14, fontWeight: "500" }]}>
-                {t(onboarding ? "circle.fromContacts" : "circle.add")}
-              </Text>
+              <View style={[styles.avatar, { borderStyle: "dashed", borderColor: color.borderStrong }]}>
+                <Icon name="person_add" tint={color.fgPrimary} />
+              </View>
+              <Text style={[text("body"), { fontWeight: "500" }]}>{t("circle.add")}</Text>
             </Pressable>
-          </View>
-          <View style={styles.card}>
-            {status === "loading" ? (
-              <View style={styles.row}>
-                <ActivityIndicator color={color.fgPrimary} />
-              </View>
-            ) : status === "failed" ? (
-              <View style={[styles.row, { flexDirection: "column", alignItems: "stretch" }]}>
-                <Text style={[text("caption"), { color: color.fgSecondary }]}>{t("circle.errors.load")}</Text>
-                <GhostButton label={t("common.retry")} onPress={() => void load()} />
-              </View>
-            ) : contacts.length === 0 ? (
-              <View style={styles.row}>
-                <Text style={[text("caption"), { color: color.fgSecondary, flex: 1 }]}>{t("circle.empty")}</Text>
-              </View>
-            ) : (
-              contacts.map((c, i) => (
-                <ContactRow
-                  key={c.id}
-                  contact={c}
-                  first={i === 0}
-                  last={i === contacts.length - 1}
-                  disabled={busy}
-                  onMove={(direction) => void move(c, direction)}
-                  onRemove={() => confirmRemove(c)}
-                />
-              ))
-            )}
-          </View>
-          {contacts.length > 1 ? (
-            <Text style={[text("caption"), styles.order]}>{t("circle.order")}</Text>
           ) : null}
         </View>
-        {needsNudge(state) ? <Note tone="warning">{t("circle.nudge")}</Note> : null}
+        {contacts.length > 1 ? <Text style={[text("caption"), styles.order]}>{t("circle.order")}</Text> : null}
+        {needsNudge(state) ? <Text style={[text("caption"), styles.order]}>{t("circle.nudge")}</Text> : null}
         {problem && sheet === "none" ? <ProblemNote problem={problem} /> : null}
-        <InfoGroup
-          heading={t("circle.ladder.heading", { minutes: t("common.minutes", { count: TIMERS.circleOpenTimeoutMs / 60_000 }) })}
-          rows={ladder}
-        />
       </ScrollView>
 
       <PermissionSheet
@@ -208,6 +182,7 @@ export function CircleScreen({
           problem={problem}
           onUnreadable={unreadable}
           onAdd={(people) => void save(people)}
+          onManual={() => dispatch({ type: "open", sheet: "manual" })}
           onClose={() => dispatch({ type: "open", sheet: "none" })}
         />
       ) : null}
@@ -278,36 +253,19 @@ function ContactRow({
           {formatPhone(contact.phone)}
         </Text>
       </View>
-      <IconButton label={t("circle.moveUp", { name })} glyph="↑" onPress={() => onMove("up")} disabled={disabled || first} />
-      <IconButton label={t("circle.moveDown", { name })} glyph="↓" onPress={() => onMove("down")} disabled={disabled || last} />
-      <IconButton label={t("circle.remove", { name })} glyph="×" onPress={onRemove} disabled={disabled} />
+      {first && last ? null : (
+        <>
+          <IconButton icon="arrow_upward" label={t("circle.moveUp", { name })} onPress={() => onMove("up")} disabled={disabled || first} />
+          <IconButton
+            icon="arrow_downward"
+            label={t("circle.moveDown", { name })}
+            onPress={() => onMove("down")}
+            disabled={disabled || last}
+          />
+        </>
+      )}
+      <IconButton icon="close" label={t("circle.remove", { name })} onPress={onRemove} disabled={disabled} />
     </View>
-  );
-}
-
-function IconButton({
-  label,
-  glyph,
-  onPress,
-  disabled,
-}: {
-  label: string;
-  glyph: string;
-  onPress: () => void;
-  disabled: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      hitSlop={6}
-      style={({ pressed }) => [styles.iconButton, (disabled || pressed) && { opacity: disabled ? 0.25 : 0.6 }]}
-    >
-      <Text style={{ fontSize: 18, color: color.fgPrimary }}>{glyph}</Text>
-    </Pressable>
   );
 }
 
@@ -324,7 +282,6 @@ function PermissionSheet({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const points = [t("circle.permission.onlyPicked"), t("circle.permission.noUpload"), t("circle.permission.quiet")];
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -335,15 +292,7 @@ function PermissionSheet({
           {t("circle.permission.title")}
         </Text>
         <Caption>{t("circle.permission.body")}</Caption>
-        <View style={{ gap: space[3], marginVertical: space[5] }}>
-          {points.map((p) => (
-            <View key={p} style={{ flexDirection: "row", gap: space[3] }}>
-              <Text style={[text("body"), { color: color.fgSecondary }]}>✓</Text>
-              <Text style={[text("body"), { flex: 1, fontSize: 15 }]}>{p}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={{ gap: 6 }}>
+        <View style={{ gap: 6, marginTop: space[6] }}>
           <PrimaryButton label={t("circle.permission.allow")} onPress={onAllow} />
           <GhostButton label={t("circle.permission.manual")} onPress={onManual} />
         </View>
@@ -360,6 +309,7 @@ function PickerModal({
   problem,
   onUnreadable,
   onAdd,
+  onManual,
   onClose,
 }: {
   inCircle: string[];
@@ -368,6 +318,7 @@ function PickerModal({
   problem: CircleProblem | null;
   onUnreadable: () => void;
   onAdd: (people: { name: string; phone: string }[]) => void;
+  onManual: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -389,14 +340,12 @@ function PickerModal({
       <SafeAreaView style={styles.modal} edges={["top", "bottom"]}>
         <View style={styles.modalHead}>
           <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onClose} hitSlop={12}>
-            <Text style={styles.backArrow}>×</Text>
+            <Icon name="close" size={24} tint={color.fgPrimary} />
           </Pressable>
           <Text accessibilityRole="header" numberOfLines={1} style={[text("brandHeader"), { flex: 1 }]}>
             {t("circle.picker.title")}
           </Text>
-          <Text style={[text("caption"), { fontSize: 14, fontWeight: "500", color: color.fgSecondary }]}>
-            {t("circle.picker.selected", { count: picked.length })}
-          </Text>
+          <IconButton icon="dialpad" label={t("circle.permission.manual")} onPress={onManual} />
         </View>
         <TextInput
           accessibilityLabel={t("circle.picker.search")}
@@ -522,12 +471,11 @@ function ManualEntryModal({
       <SafeAreaView style={styles.modal} edges={["top", "bottom"]}>
         <View style={[styles.modalHead, { marginBottom: 0 }]}>
           <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onClose} hitSlop={12}>
-            <Text style={styles.backArrow}>×</Text>
+            <Icon name="close" size={24} tint={color.fgPrimary} />
           </Pressable>
         </View>
         <View style={{ flex: 1, paddingHorizontal: space[5] }}>
           <Title>{t("circle.manual.title")}</Title>
-          <Caption>{t("circle.manual.body")}</Caption>
           <form.Field name="name">
             {(field) => (
               <TextInput
@@ -571,23 +519,17 @@ function ManualEntryModal({
 }
 
 const styles = StyleSheet.create({
-  topBar: { flexDirection: "row", alignItems: "center", height: 44, marginBottom: space[3] },
-  backArrow: { fontSize: 24, color: color.fgPrimary },
-  group: { backgroundColor: color.surfaceHover, borderRadius: 28, padding: space[3], marginTop: space[4] },
-  groupHead: { flexDirection: "row", alignItems: "center", gap: space[3], paddingHorizontal: space[2], paddingBottom: space[3] },
-  smallButton: {
-    height: 32,
-    paddingHorizontal: space[3],
+  card: {
+    marginTop: space[5],
+    backgroundColor: color.surface,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: color.border,
-    backgroundColor: color.surface,
-    justifyContent: "center",
+    paddingHorizontal: space[4],
   },
-  card: { backgroundColor: color.surface, borderRadius: radius.md, paddingHorizontal: 18 },
   row: { flexDirection: "row", alignItems: "center", gap: space[2], paddingVertical: 11, minHeight: 64 },
   rowDivider: { borderTopWidth: 1, borderStyle: "dashed", borderTopColor: color.divider },
-  order: { color: color.fgSecondary, fontSize: 14, paddingHorizontal: space[2], paddingTop: space[3] },
+  order: { color: color.fgSecondary, paddingHorizontal: space[1], paddingTop: space[3] },
   avatar: {
     width: 40,
     height: 40,
@@ -599,7 +541,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: space[1],
   },
-  iconButton: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: color.chip },
   scrim: { flex: 1, backgroundColor: "rgba(17,17,17,0.4)" },
   sheet: {
     backgroundColor: color.surface,

@@ -245,7 +245,6 @@ function Pick({
       <Top title={t("demo.title")}>{unlocked ? <LockButton onLock={onLock} /> : null}</Top>
       <main className="pick">
         <section className="pick__side">
-          <p className="lab">{t("demo.step1")}</p>
           {unlocked ? (
             <div className="card row">
               <span className="cd-icon ok">check_circle</span>
@@ -270,25 +269,8 @@ function Pick({
               </button>
             </form>
           )}
-          <div className="panel">
-            <div className="panel__h">
-              <span className="cd-icon">verified_user</span>
-              {t("demo.safeBecause")}
-            </div>
-            <ul className="panel__b safe">
-              {([1, 2, 3, 4] as const).map((n) => (
-                <li key={n}>
-                  <span className="cd-icon ok">check_circle</span>
-                  <span>
-                    <b>{t(`demo.safe${n}Title`)}</b> {t(`demo.safe${n}`)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
         </section>
         <section className={`pick__main ${unlocked ? "" : "is-off"}`}>
-          <p className="lab">{t("demo.step2")}</p>
           <h2 className="hp">{t("demo.pickTitle")}</h2>
           <p className="cap">{t("demo.pickBody")}</p>
           <div className="people">
@@ -307,10 +289,6 @@ function Pick({
               </button>
             ))}
           </div>
-          <p className="small">
-            <span className="cd-icon">autorenew</span>
-            {t("demo.refreshEvery")}
-          </p>
         </section>
       </main>
     </>
@@ -478,7 +456,7 @@ function Drive({
       </Top>
       <main className="grid">
         <section className="col">
-          <Panel icon="route" title={t("demo.route")} aside={<span className="small">{t("demo.routeNote")}</span>}>
+          <Panel icon="route" title={t("demo.route")}>
             <RouteMap route={route} step={step} off={off} danger={danger} />
             <div className="row" style={{ marginTop: 12 }}>
               {off ? (
@@ -537,7 +515,6 @@ function Drive({
           <Panel icon="tune" title={t("demo.states")}>
             <div className="states">
               <Tile on={status === "active"} tone="success" title={t("demo.stateSafe")}>
-                <span className="small">{danger ? t("demo.stateSafeBodyAlert") : t("demo.stateSafeBody")}</span>
                 <TileButton
                   icon="directions_walk"
                   disabled={!off || status !== "active"}
@@ -550,15 +527,11 @@ function Drive({
                 </TileButton>
               </Tile>
               <Tile on={status === "check_in"} tone="warning" title={t("demo.stateCall")}>
-                <span className="small">{danger ? t("demo.stateCallBodyAlert") : t("demo.stateCallBody")}</span>
                 <TileButton icon="ring_volume" disabled={status !== "active"} onClick={() => void act("check-in", t("demo.logAsk"))}>
                   {t("demo.askNow")}
                 </TileButton>
               </Tile>
               <Tile on={danger} tone="danger" title={t("demo.stateDanger")}>
-                <span className="small">
-                  {journey.alert?.reason === "duress" ? t("demo.stateDangerDuress") : t("demo.stateDangerBody")}
-                </span>
                 <TileButton icon="phone_missed" disabled={status !== "check_in"} onClick={() => void act("skip", t("demo.logSkip"))}>
                   {t("demo.noAnswer")}
                 </TileButton>
@@ -591,7 +564,6 @@ function Drive({
           <div className="phone">
             <LiveJourney journey={journey} locale={locale} now={trip.now} />
           </div>
-          <p className="small">{t("demo.circleNote")}</p>
           <p className="lab">{t("demo.trip")}</p>
           <TripCard journey={journey} locale={locale} />
           <Panel icon="group" title={t("demo.circle")} aside={<span className="small">{t("demo.people", { count: journey.circle.length })}</span>}>
@@ -799,7 +771,9 @@ function Log({ messages, local, locale }: { messages: DemoMessage[]; local: Loca
           <span className="t" title={r.text}>
             {r.text}
           </span>
-          {r.sms ? <span className="cd-chip cd-chip--sm">{t("demo.logOnlyLogged")}</span> : <span className="small">{t("demo.byDashboard")}</span>}
+          <span className="cd-icon" aria-label={t(r.sms ? "demo.logOnlyLogged" : "demo.byDashboard")}>
+            {r.sms ? "sms" : "tune"}
+          </span>
         </li>
       ))}
     </ul>

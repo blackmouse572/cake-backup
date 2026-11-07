@@ -12,7 +12,7 @@ import {
   type VerifyCodeResult,
 } from "../services/auth.service";
 import { color, radius, text } from "../theme";
-import { Caption, GhostButton, InfoGroup, Note, PrimaryButton, Screen, StepNav, Title } from "../ui";
+import { Caption, GhostButton, IconLine, Note, PrimaryButton, Screen, StepNav, Title } from "../ui";
 
 /** Field errors are the failed results the validators return; these narrow them to copy keys. */
 const isSendError = (e: unknown): e is Exclude<SendCodeResult, "ok"> =>
@@ -108,13 +108,6 @@ export function PhoneScreen({
               </>
             )}
           </form.Field>
-          <InfoGroup
-            rows={[
-              { title: t("signIn.phone.noCageTitle"), body: t("signIn.phone.noCageBody") },
-              { title: t("signIn.phone.onceTitle"), body: t("signIn.phone.onceBody") },
-              { title: t("signIn.phone.circleTitle"), body: t("signIn.phone.circleBody") },
-            ]}
-          />
         </Screen>
       )}
     </form.Subscribe>
@@ -130,7 +123,7 @@ export function CodeScreen({
   channel: firstChannel,
   onBack,
   onSignedIn,
-  step = { step: 1, total: 5 },
+  step = { step: 2, total: 5 },
 }: {
   phoneNumber: string;
   channel: CodeChannel;
@@ -187,7 +180,8 @@ export function CodeScreen({
       <Title>{t("signIn.code.title")}</Title>
       <Text style={[text("caption"), { color: color.fgSecondary, marginTop: space[2] }]}>
         {t("signIn.code.sentTo", { channel: channel === "zalo" ? "Zalo" : "SMS" })}{" "}
-        <Text style={{ color: color.fgPrimary, fontWeight: "500" }}>{formatPhone(phoneNumber)}</Text>.{" "}
+        <Text style={{ color: color.fgPrimary, fontWeight: "500" }}>{formatPhone(phoneNumber)}</Text>
+        {"  "}
         <Text accessibilityRole="link" onPress={onBack} style={{ color: color.blueText, fontWeight: "500" }}>
           {t("signIn.code.editNumber")}
         </Text>
@@ -256,19 +250,6 @@ export function CodeScreen({
         )}
       </form.Field>
 
-      <View style={styles.preview}>
-        <Text style={[text("sectionLabel"), { color: color.fgTertiary, textTransform: "uppercase", paddingBottom: 10 }]}>
-          {t("signIn.code.previewLabel")}
-        </Text>
-        <View style={styles.bubble}>
-          <Text style={[text("caption"), { fontSize: 14, fontWeight: "500", color: color.fgPrimary }]}>
-            {t("signIn.code.previewSender")}
-          </Text>
-          <Text style={[text("caption"), { fontSize: 14, color: color.fgPrimary }]}>
-            {t("messages.code", { code: "482913" })}
-          </Text>
-        </View>
-      </View>
     </Screen>
   );
 }
@@ -293,15 +274,11 @@ export function WelcomeBackScreen({
     <Screen footer={<PrimaryButton label={t("common.continue")} onPress={onContinue} />}>
       <View style={{ height: space[5] }} />
       <Title>{t("signIn.welcomeBack.title")}</Title>
-      <Caption>{t("signIn.welcomeBack.body", { phone: formatPhone(me.phoneNumber) })}</Caption>
-      <InfoGroup
-        heading={t("signIn.welcomeBack.restored")}
-        rows={[
-          { title: t("circle.name"), body: t("signIn.welcomeBack.people", { count: me.circleSize }), done: true },
-          { title: t("signIn.welcomeBack.codes"), body: t("signIn.welcomeBack.codesKept"), done: true },
-        ]}
-      />
-      <Note tone="info">{t("signIn.welcomeBack.permissions")}</Note>
+      <Caption>{formatPhone(me.phoneNumber)}</Caption>
+      <View style={styles.kept}>
+        <IconLine icon="group">{t("signIn.welcomeBack.circle", { count: me.circleSize })}</IconLine>
+        <IconLine icon="lock">{t("signIn.welcomeBack.codes")}</IconLine>
+      </View>
       {onForgotCodes && me.hasCodes ? (
         <Text accessibilityRole="button" onPress={onForgotCodes} style={[text("caption"), styles.link, styles.forgot]}>
           {t("codes.forgot")}
@@ -340,7 +317,6 @@ const styles = StyleSheet.create({
   hidden: { position: "absolute", opacity: 0, width: 1, height: 1 },
   resend: { marginTop: 14, flexDirection: "row", justifyContent: "space-between" },
   link: { color: color.blueText, fontWeight: "500" },
-  forgot: { marginTop: space[4] },
-  preview: { marginTop: space[5], borderRadius: radius.md, backgroundColor: color.surfaceHover, padding: space[3] },
-  bubble: { backgroundColor: color.surface, borderRadius: 16, padding: space[3] },
+  forgot: { marginTop: space[5] },
+  kept: { marginTop: space[6], gap: space[3] },
 });

@@ -16,7 +16,8 @@ type Step = { name: "intro" } | { name: "code"; channel: CodeChannel } | { name:
  * then set both codes again (`PUT /me/codes/reset`). The server refuses it
  * during a journey; there the traveller lets the timer run out (screen 26).
  *
- * `fresh` skips the sign-in code when one was verified moments ago (08c).
+ * `fresh` skips the sign-in code when one was verified moments ago (08c),
+ * so the progress bar counts just the two codes.
  */
 export function ResetCodesFlow({
   phoneNumber,
@@ -55,7 +56,7 @@ export function ResetCodesFlow({
       return (
         <SetCodesFlow
           save={resetCodes}
-          steps={{ safe: 3, duress: 4, total: TOTAL }}
+          steps={fresh ? { safe: 1, duress: 2, total: 2 } : { safe: 3, duress: 4, total: TOTAL }}
           onBack={fresh ? onBack : intro}
           onReverify={intro}
           onDone={onDone}
@@ -101,8 +102,6 @@ function ResetIntro({
       <StepNav step={1} total={TOTAL} onBack={onBack} />
       <Title>{t("codes.reset.title")}</Title>
       <Caption>{t("codes.reset.body", { phone: formatPhone(phoneNumber) })}</Caption>
-      <Note tone="info">{t("codes.reset.oldCodesNote")}</Note>
-      <Note tone="warning">{t("codes.reset.journeyNote")}</Note>
       {problem ? <Note tone="danger">{t(`signIn.phone.errors.${problem}`)}</Note> : null}
     </Screen>
   );

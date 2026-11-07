@@ -1,5 +1,6 @@
 import { layout } from "@cage/ui-tokens";
 import type { Me } from "@cage/shared";
+import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
@@ -13,6 +14,7 @@ import { ResetCodesFlow } from "./src/screens/reset-codes";
 import { fetchMe, hasStoredSession, type CodeChannel } from "./src/services/auth.service";
 import { CodeScreen, PhoneScreen, WelcomeBackScreen } from "./src/screens/sign-in";
 import { color } from "./src/theme";
+import { ICON_FONT } from "./src/ui";
 
 export default function App() {
   return (
@@ -60,6 +62,8 @@ async function stepAfterSignIn(isReturn: boolean): Promise<Step> {
 
 function Root() {
   const [step, setStep] = useState<Step>({ name: "loading" });
+  // A failed font load still shows the app; icons are always beside words or labelled.
+  const [fontsLoaded, fontError] = useFonts(ICON_FONT);
 
   useEffect(() => {
     hasStoredSession()
@@ -67,13 +71,11 @@ function Root() {
       .catch(() => setStep({ name: "phone" }));
   }, []);
 
+  if (!fontsLoaded && !fontError) return <Loading />;
+
   switch (step.name) {
     case "loading":
-      return (
-        <View style={[styles.screen, { justifyContent: "center" }]}>
-          <ActivityIndicator color={color.fgPrimary} />
-        </View>
-      );
+      return <Loading />;
     case "phone":
       return <PhoneScreen onSent={(phoneNumber, channel) => setStep({ name: "code", phoneNumber, channel })} />;
     case "code":
@@ -116,6 +118,14 @@ function Root() {
     case "circleSettings":
       return <CircleScreen mode="settings" onBack={() => setStep({ name: "home" })} />;
   }
+}
+
+function Loading() {
+  return (
+    <View style={[styles.screen, { justifyContent: "center" }]}>
+      <ActivityIndicator color={color.fgPrimary} />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
