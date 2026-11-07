@@ -35,6 +35,9 @@ export const ErrorCode = z.enum([
   "order_mismatch",
   // Journeys
   "no_codes",
+  // Place search and routes
+  "maps_unavailable",
+  "rate_limited",
   // Hackathon demo
   "wrong_demo_key",
   "demo_locked",

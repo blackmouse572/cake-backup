@@ -94,6 +94,11 @@ Start only after the GitHub credentials are revoked and the Cloudflare secrets a
    bunx wrangler secret put CODE_PEPPER --env staging
    ```
    Changing `CODE_PEPPER` later makes every stored safe code and duress PIN unusable, so set it once.
+
+   For real place search and routes ([ADR 0004](adr/0004-maps.md)), add Goong's REST API key from account.goong.io and set `MAPS_PROVIDER` to `"goong"` under `env.staging` in `apps/api/wrangler.jsonc`. Until then staging answers from the few fixed places in `src/maps/fixed.maps.ts`.
+   ```sh
+   bunx wrangler secret put GOONG_API_KEY --env staging
+   ```
 5. **Cloudflare Access** (Zero Trust in the dashboard; the free plan covers 50 users):
    - Under Service credentials, create a service token named `cage-staging-dev-builds`. Keep its client id and secret for step 7.
    - Under Applications, add a Self-hosted application "Cage staging" with the public hostnames `staging.cage.vn` and `api-staging.cage.vn`. Give it two policies: a Service Auth policy that includes the service token, and an Allow policy that includes the team's emails (sign-in by one-time PIN). Under the application's settings, turn on "Return 401 response for Service Auth policies" so the app gets a 401 instead of a login page.
@@ -117,6 +122,7 @@ Start only after the GitHub credentials are revoked and the Cloudflare secrets a
 | --- | --- | --- |
 | `BETTER_AUTH_SECRET` | Worker secret on `cage-api-staging` (later `-production`) | sessions |
 | `CODE_PEPPER` | Worker secret, same | safe code and duress PIN hashes |
+| `GOONG_API_KEY` | Worker secret, same, once `MAPS_PROVIDER` is `"goong"` | place search and routes |
 | `EXPO_PUBLIC_CF_ACCESS_CLIENT_ID`, `EXPO_PUBLIC_CF_ACCESS_CLIENT_SECRET` | EAS environment `development` | development builds |
 
 Workers Builds authenticates with the Cloudflare account it runs in, so GitHub needs no Cloudflare token.

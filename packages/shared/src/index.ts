@@ -16,4 +16,6 @@ export * from "./circle";
 
 export * from "./demo-route";
 
+export * from "./places";
+
 export * from "./response";

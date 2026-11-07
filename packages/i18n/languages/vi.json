@@ -266,12 +266,22 @@
   "plan": {
     "title": "Bạn đi đâu?",
     "destination": "Điểm đến",
-    "destinationHint": "Ví dụ: Nhà nghỉ Bờ Sông, Quận 1",
+    "destinationHint": "Ví dụ: Bến xe Mỹ Đình",
     "arriveIn": "Thời gian đi",
     "checkNote": "Có gì bất thường, Cage sẽ hỏi bạn ngay.",
-    "notFound": "Không tìm thấy địa chỉ này. Thử ghi thêm quận, huyện.",
     "needLocation": "Cage cần quyền vị trí để vòng an toàn thấy bạn trên đường đi.",
-    "error": "Chưa bắt đầu được. Kiểm tra mạng rồi thử lại."
+    "error": "Chưa bắt đầu được. Kiểm tra mạng rồi thử lại.",
+    "from": "Vị trí hiện tại",
+    "noResults": "Không thấy nơi này. Thử ghi thêm phường hoặc tỉnh, thành phố.",
+    "searchError": "Chưa tìm được. Kiểm tra mạng rồi thử lại.",
+    "routeError": "Chưa tìm được đường đi. Bạn chọn thời gian đi bên dưới nhé.",
+    "map": "Bản đồ đường đi",
+    "clear": "Xóa điểm đến",
+    "by": "Đi bằng",
+    "mode": {
+      "motorbike": "Xe máy",
+      "car": "Ô tô"
+    }
   },
   "onRoute": {
     "arrive": "dự kiến đến",

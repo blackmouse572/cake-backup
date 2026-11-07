@@ -1,5 +1,5 @@
 import type { Locale } from "@cage/i18n";
-import type { AlertReason } from "@cage/shared";
+import type { AlertReason, LatLng, Place, PlaceSuggestion, Route, RouteRequest } from "@cage/shared";
 import type { Bindings } from "./bindings";
 
 /** Hono env for every route. */
@@ -70,3 +70,17 @@ export type DeliveryLogEntry = {
 
 /** The `fetch` a provider calls, passed in so tests can answer for the provider. */
 export type Fetch = (input: Request | string, init?: RequestInit) => Promise<Response>;
+
+// --- Maps ------------------------------------------------------------------
+
+/**
+ * A provider of place search and routes behind our API (ADR 0004): Goong in
+ * Vietnam, a second one later for trips abroad. Requests to it carry the
+ * search or the two points, never who is asking. `null` means it found
+ * nothing; `"unavailable"` means it failed or didn't answer.
+ */
+export interface MapsProvider {
+  suggest(query: string, near: LatLng | undefined): Promise<PlaceSuggestion[] | "unavailable">;
+  place(id: string): Promise<Place | null | "unavailable">;
+  route(request: RouteRequest): Promise<Route | null | "unavailable">;
+}

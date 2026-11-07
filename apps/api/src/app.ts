@@ -6,6 +6,8 @@ import { demoController } from "./controllers/demo.controller";
 import { journeysController } from "./controllers/journeys.controller";
 import { linksController } from "./controllers/links.controller";
 import { meController } from "./controllers/me.controller";
+import { placesController } from "./controllers/places.controller";
+import { routesController } from "./controllers/routes.controller";
 import { logError, requestLog } from "./middleware/request-log";
 import type { AppEnv } from "./types";
 
@@ -17,6 +19,9 @@ export const app = new Hono<AppEnv>()
   .route("/me", meController)
   .route("/circle", circleController)
   .route("/journeys", journeysController)
+  // Place search and routes through the maps provider (ADR 0004).
+  .route("/places", placesController)
+  .route("/routes", routesController)
   // The safety circle's links: no session, the link is the key (#18).
   .route("/links", linksController)
   // The hackathon demo; 404 unless DEMO_MODE is "on".

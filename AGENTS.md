@@ -27,7 +27,7 @@ Monorepo skeleton in place. The stack is chosen in [ADR 0001](docs/adr/0001-stac
 - After changing a `wrangler.jsonc`, run `bun run typegen` in that app. After changing `packages/db/src/schema.ts`, run `bun run generate` there and commit the migration.
 - API tests run inside the Workers runtime with `@cloudflare/vitest-plugin`.
 - Environments: local, `staging` (Cloudflare Workers Builds deploys it on every push to main, private behind Cloudflare Access) and `production` (not deployed yet). Infrastructure is Wrangler config only, no Terraform. Deploy with `--env`, never the top-level Wrangler config. Setup, hostnames and the full list of secrets: `docs/deploy.md`.
-- API secrets: `BETTER_AUTH_SECRET` and `CODE_PEPPER`. For `wrangler dev`, copy `apps/api/.dev.vars.example` to `.dev.vars`; sign-in codes are printed to the log (`MESSAGE_SENDER=console`). Zalo ZNS and SMS settings are in [docs/messaging.md](docs/messaging.md).
+- API secrets: `BETTER_AUTH_SECRET` and `CODE_PEPPER`, plus `GOONG_API_KEY` where `MAPS_PROVIDER` is `goong` (place search and routes, [ADR 0004](docs/adr/0004-maps.md); local dev and tests use `fixed`). For `wrangler dev`, copy `apps/api/.dev.vars.example` to `.dev.vars`; sign-in codes are printed to the log (`MESSAGE_SENDER=console`). Zalo ZNS and SMS settings are in [docs/messaging.md](docs/messaging.md).
 - Mobile: add Expo packages with `bunx expo install` (it picks the versions for the SDK), and check the docs for the installed SDK version before using an Expo API, since APIs change every release.
 
 ## Commits and hooks
