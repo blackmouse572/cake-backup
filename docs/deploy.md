@@ -7,7 +7,7 @@ Infrastructure is the Wrangler config of each Worker (`apps/api/wrangler.jsonc`,
 | local | `localhost:8787` | `localhost:3000` | local (`cage`) | `bun run dev` |
 | staging | `cage-api-staging`, `api-staging.cage.vn` | `cage-web-staging`, `staging.cage.vn` | `cage-staging` | Workers Builds, on push to `main` |
 | demo | `cage-api-demo`, `cage-api-demo.<account>.workers.dev` | `cage-web-demo`, `cage-web-demo.<account>.workers.dev` | `cage-demo` | by hand, `bun run deploy:demo` |
-| production | `cage-api-production`, `api.cage.vn` | `cage-web-production`, `cage.vn` | `cage-production` | not yet (#38) |
+| production | `cage-api-production`, `api.cage.vn` | `cage-web-production`, `cage.vn` | `cage-production` | not yet (#34) |
 
 Wrangler creates the custom domains, with their DNS records and certificates, on deploy from the `routes` in each config. The hostnames sit one level under `cage.vn` on purpose: Cloudflare's free Universal SSL certificate covers `*.cage.vn` but not `*.staging.cage.vn`.
 
@@ -22,7 +22,7 @@ Staging is for the team and testers, and its log can hold sign-in codes (see Log
 - The website calls the API through a service binding, which doesn't pass through Access.
 - `workers_dev` and `preview_urls` are off, so no `*.workers.dev` address gets around Access.
 
-Journey routes have required sign-in since #9, so opening staging up is a product decision, not a security gap: remove the Access application, not the Workers.
+Journey routes have required sign-in since #5, so opening staging up is a product decision, not a security gap: remove the Access application, not the Workers.
 
 ## Hackathon demo
 
@@ -61,7 +61,7 @@ EXPO_PUBLIC_DEMO=on EXPO_PUBLIC_API_URL=https://cage-api-demo.<account>.workers.
 
 Locally, `bun run dev` in `apps/web` serves the dashboard at `http://localhost:3000/demo` (key: `DEMO_KEY` in `apps/api/.dev.vars`), and an Android emulator reaches the API with `EXPO_PUBLIC_API_URL=http://10.0.2.2:8787` while `bunx wrangler dev --persist-to ../web/.wrangler/state` runs in `apps/api`.
 
-## Data location (for the privacy review, #34)
+## Data location (for the privacy review, #30)
 
 The databases are created with `--location apac`, which places the D1 primary in Cloudflare's Asia-Pacific region, the closest to Vietnam. It's a hint, not a guarantee. D1 has no Vietnam or APAC jurisdiction (only `eu`, `us` and `fedramp`), so data does leave Vietnam. Durable Objects (live journey state) are created near the first request that reaches them, so Vietnamese users' land in APAC too. Passing `locationHint: "apac"` when the API gets a journey's stub would make that explicit. Decree 13's cross-border transfer paperwork has to cover both.
 
@@ -72,6 +72,8 @@ Both Workers have Workers Logs and Workers Issues on. Issues groups errors and s
 One exception on staging: until the Zalo and SMS settings are in (`docs/messaging.md`, step 5), `MESSAGE_SENDER=console` writes sign-in codes and phone numbers to the staging log so testers can sign in. Production uses `zalo+sms` and never the console sender.
 
 ## Setting up staging (once)
+
+Start only after the GitHub credentials are revoked and the Cloudflare secrets are rotated (the November 2026 cleanup), so no secret below is set in a compromised account.
 
 1. **Domain.** Add `cage.vn` to the Cloudflare account and point the registrar's nameservers at Cloudflare.
 2. **Databases.** From `apps/api`, logged in with `bunx wrangler login`:
@@ -95,7 +97,7 @@ One exception on staging: until the Zalo and SMS settings are in (`docs/messagin
 5. **Cloudflare Access** (Zero Trust in the dashboard; the free plan covers 50 users):
    - Under Service credentials, create a service token named `cage-staging-dev-builds`. Keep its client id and secret for step 7.
    - Under Applications, add a Self-hosted application "Cage staging" with the public hostnames `staging.cage.vn` and `api-staging.cage.vn`. Give it two policies: a Service Auth policy that includes the service token, and an Allow policy that includes the team's emails (sign-in by one-time PIN). Under the application's settings, turn on "Return 401 response for Service Auth policies" so the app gets a 401 instead of a login page.
-6. **Workers Builds.** In Workers & Pages, open each staging Worker, go to Settings > Build, and connect `blackmouse572/cage`:
+6. **Workers Builds.** In Workers & Pages, open each staging Worker, go to Settings > Build, and connect `blackmouse572/cake-backup`:
 
    | Setting | `cage-api-staging` | `cage-web-staging` |
    | --- | --- | --- |
