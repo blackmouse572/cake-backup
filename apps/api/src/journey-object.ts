@@ -148,7 +148,8 @@ export class JourneyObject extends DurableObject<Bindings> {
 
     if (!state.simulated) state.lastUpdate = update;
 
-    if (state.status === "lost_contact") {
+    // On the demo the dashboard drives the traveller, so the phone's own updates never bring it back.
+    if (state.shownStatus === "lost_contact" && !state.simulated) {
       this.backOnline(state, now);
       await this.save(state);
     } else {
@@ -413,19 +414,27 @@ export class JourneyObject extends DurableObject<Bindings> {
   }
 
   /**
-   * The phone is heard from again after lost contact (screen 16): the
-   * journey carries on, the circle is told, and the server checks in once
-   * the buffer passes again, since the traveller is late. A stronger alert
-   * (SOS, the duress PIN) is never lifted this way: its status is not
-   * "lost_contact".
+   * The phone is heard from again after it showed lost contact (screen 16):
+   * it goes back to active and the server checks in once the buffer passes
+   * again, since the traveller is late. If the journey really is in lost
+   * contact, the alert ends and the circle is told. A duress PIN entered
+   * meanwhile (changing codes, signing out) keeps its alert, but the phone
+   * looks exactly as it would after the safe code.
    */
   private backOnline(state: JourneyState, now: number): void {
-    state.status = "active";
     state.shownStatus = "active";
+    state.deadlineAt = Math.max(arrivalDeadline(state.expectedArrivalAt), now + TIMERS.arrivalBufferMs);
+
+    if (state.status !== "lost_contact") return;
+    state.status = "active";
     state.alert = null;
     state.ladderAt = null;
-    state.deadlineAt = Math.max(arrivalDeadline(state.expectedArrivalAt), now + TIMERS.arrivalBufferMs);
-    state.outbox.push({ kind: "back_online" });
+
+    // A lost-contact alert not sent yet is dropped instead: the circle never heard, so there is nothing to undo.
+    const unsent = state.outbox.some((notice) => notice.kind === "alert");
+    state.outbox = state.outbox.filter((notice) => notice.kind !== "alert");
+
+    if (!unsent) state.outbox.push({ kind: "back_online" });
   }
 
   /**

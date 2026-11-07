@@ -1021,6 +1021,13 @@ describe("coming back after lost contact", () => {
 
   it("keeps watching: the server checks in again after the buffer", async () => {
     const { journey, journeyToken, cookie } = await lostContact();
+
+    // Long past the expected arrival, so the next check comes a buffer from now, not from the arrival time.
+    await runInDurableObject(stubFor(journey.id), async (_obj: JourneyObject, state) => {
+      const st = await state.storage.get<{ expectedArrivalAt: number }>("state");
+      await state.storage.put("state", { ...st, expectedArrivalAt: Date.now() - 2 * 60 * 60_000 });
+    });
+
     const before = Date.now();
     const view = await readData(await sendUpdate(journey.id, journeyToken), JourneyView);
 
@@ -1036,5 +1043,29 @@ describe("coming back after lost contact", () => {
     await sendUpdate(journey.id, journeyToken);
 
     expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("sos");
+  });
+
+  it("looks the same on the phone after a duress PIN entered meanwhile, while the circle keeps the alert", async () => {
+    const { journey, journeyToken, cookie } = await lostContact();
+    expect((await send("/me/codes", "PUT", { safe: "1357", duress: "1368", current: DURESS }, { cookie })).status).toBe(204);
+    await vi.waitFor(async () => expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("duress"));
+
+    const view = await readData(await sendUpdate(journey.id, journeyToken), JourneyView);
+
+    expect(view.status).toBe("active");
+    expect(view.nextDeadlineAt).not.toBeNull();
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("duress");
+  });
+
+  it("doesn't come back on the demo while the dashboard drives the traveller", async () => {
+    const { journey, journeyToken } = await lostContact();
+    await runInDurableObject(stubFor(journey.id), async (_obj: JourneyObject, state) => {
+      const st = await state.storage.get<{ simulated: boolean }>("state");
+      await state.storage.put("state", { ...st, simulated: true });
+    });
+
+    await sendUpdate(journey.id, journeyToken);
+
+    expect((await stubFor(journey.id).circleView())?.status).toBe("lost_contact");
   });
 });
