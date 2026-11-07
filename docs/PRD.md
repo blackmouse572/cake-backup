@@ -77,7 +77,7 @@ These patterns are from general knowledge and still need checking against source
 
 ### SOS and fake call
 - SOS is always reachable during a journey, on the on-route screen (02), the check-in screen (03) and the lost-contact screen. It is a one-second press and hold, with a progress bar and a buzz, so a pocket press can't raise it. It needs no code: it alerts the safety circle at once (`POST /journeys/:id/sos`). Lost contact only tells the circle calmly, so an SOS raises it to an SOS alert; any other alert (duress, no answer) stays as it is and the circle is not told twice. If the SOS doesn't reach the server the phone says so and the traveller can hold again. The safe code clears it, like any alert.
-- A fake incoming call helps the user leave an uncomfortable situation.
+- A fake incoming call helps the user leave an uncomfortable situation. From the on-route screen (02) the traveller picks a caller (Mẹ, Bố, Chị Hai, Sếp or a typed name) and a delay (5 seconds, 30 seconds or 1 minute); the phone then rings on the check-in call's screen and can be answered or declined. It stays on the phone: no server call, and the circle never hears about it. It rings only while the app is open, and it gives way when Cage asks a check-in or raises an alert.
 
 ### Disguise mode
 - Neutral app name and icon (for example a notes app), quiet notifications, a quick-hide gesture and a decoy screen, because a trafficker may check the phone.
