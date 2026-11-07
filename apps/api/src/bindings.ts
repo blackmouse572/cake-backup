@@ -30,6 +30,12 @@ export interface Bindings {
    * dashboard may show and drive. Unset, every trip on the demo server.
    */
   DEMO_ACCOUNTS?: string;
+  /** Who answers place search and routes: "goong", or "fixed" (a few made-up places, for local dev and tests). See maps-provider.ts. */
+  MAPS_PROVIDER: string;
+  /** Secret, when MAPS_PROVIDER is "goong". Goong's REST API key (account.goong.io). */
+  GOONG_API_KEY?: string;
+  /** Limits each traveller's place searches and routes; every call to Goong costs money. */
+  MAPS_RATE_LIMIT: RateLimit;
   /** Secret. Signs sessions. */
   BETTER_AUTH_SECRET: string;
   /** Secret. Keys the safe code and duress PIN hashes; never stored in D1. */

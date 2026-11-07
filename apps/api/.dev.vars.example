@@ -4,6 +4,10 @@ CODE_PEPPER=dev-only-pepper
 # The demo dashboard (http://localhost:3000/demo) asks for this key.
 DEMO_KEY=dev-demo-key
 
+# Real place search and routes from Goong (ADR 0004) instead of the fixed places:
+# MAPS_PROVIDER=goong
+# GOONG_API_KEY=
+
 # To send real messages from `wrangler dev`, set MESSAGE_SENDER here
 # ("zalo+sms", "zalo" or "sms") and fill in what it needs. Never commit these.
 # MESSAGE_SENDER=zalo

@@ -315,12 +315,22 @@
   "plan": {
     "title": "Where are you going?",
     "destination": "Destination",
-    "destinationHint": "For example: Bờ Sông guesthouse, District 1",
+    "destinationHint": "For example: Mỹ Đình bus station",
     "arriveIn": "Travel time",
     "checkNote": "If anything looks wrong, Cage will ask you straight away.",
-    "notFound": "Couldn't find that address. Try adding the district.",
     "needLocation": "Cage needs your location so your circle can see you on the way.",
-    "error": "Couldn't start. Check your connection and try again."
+    "error": "Couldn't start. Check your connection and try again.",
+    "from": "Your location",
+    "noResults": "Nothing found. Try adding the ward or the city.",
+    "searchError": "Couldn't search. Check your connection and try again.",
+    "routeError": "Couldn't find a route. Pick a travel time below.",
+    "map": "Route map",
+    "clear": "Clear destination",
+    "by": "Going by",
+    "mode": {
+      "motorbike": "Motorbike",
+      "car": "Car"
+    }
   },
   "onRoute": {
     "arrive": "arrival",

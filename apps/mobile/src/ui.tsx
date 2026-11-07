@@ -12,9 +12,11 @@ import { color, radius, text } from "./theme";
  * `cd-btn`, `.nav` + `.prog`, `.grp` / `.card` / `.it` and keypad.
  */
 
-export function Screen({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+/** A screen: `top` runs edge to edge above the padded page (the map on screen 01), `footer` holds the actions. */
+export function Screen({ children, footer, top }: { children: ReactNode; footer?: ReactNode; top?: ReactNode }) {
   return (
     <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
+      {top}
       <View style={styles.page}>{children}</View>
       {footer ? <View style={styles.footer}>{footer}</View> : null}
       {DEMO ? <DemoPill /> : null}

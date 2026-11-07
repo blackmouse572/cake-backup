@@ -1,16 +1,17 @@
 import { formatTime, isLocale, type Locale } from "@cage/i18n";
-import { CODE_LENGTH, TIMERS, type JourneyView } from "@cage/shared";
-import { layout, space } from "@cage/ui-tokens";
+import { CODE_LENGTH, TIMERS, type JourneyView, type Place } from "@cage/shared";
+import { space } from "@cage/ui-tokens";
 import { useEffect, useReducer, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { DEMO } from "../auth";
 import { useTranslation } from "../i18n";
 import { currentJourney, enterCode, fetchJourney, forgetJourney, sendSos, sendUpdate, startJourney } from "../services/journey.service";
-import { allowLocation, findPlace, watchReadings } from "../services/places.service";
+import { allowLocation, watchReadings } from "../services/places.service";
 import { saveSettings } from "../services/settings.service";
-import { color, radius, text } from "../theme";
+import { color, text } from "../theme";
 import { BackBar, Caption, CodeDots, Icon, IconLine, Keypad, Note, PrimaryButton, Screen, Title } from "../ui";
 import { initialJourneyFlow, journeyReducer, type CodeEntry, type JourneyAction, type SosState } from "./journey.reducer";
+import { PlanView } from "./plan";
 import { SosButton } from "./sos-button";
 
 /** How often the open app asks the server what to show (a check-in, an alert). Quicker in the demo build, so the stage keeps up with the dashboard. */
@@ -21,9 +22,6 @@ const UPDATE_MS = 30_000;
 
 const UPDATE_DISTANCE_M = 25;
 
-/** Arrival choices on screen 01, in minutes. Route times come with the map provider (#15). */
-const ARRIVAL_CHOICES = [15, 30, 45, 60] as const;
-
 const MINUTE_MS = 60_000;
 
 const SECOND_MS = 1_000;
@@ -32,9 +30,7 @@ const SECOND_MS = 1_000;
  * A journey on the traveller's phone: plan (01), on route (02), "are you
  * safe?" (03), alert sent (04) and the code screens (26, 26b). The flow is
  * `journeyReducer`; this file draws it and talks to the services.
- *
- * Without a map provider yet (#15), screen 01 takes a typed address and an
- * arrival time, and the phone's own geocoder finds it.
+ * Screen 01 (search, route, travel time) is `PlanView` in plan.tsx.
  */
 export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
   const { i18n } = useTranslation();
@@ -102,20 +98,17 @@ export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
     });
   }, [id, submit, purpose]);
 
-  async function start(destination: string, minutes: number) {
+  async function start(destination: Place, travelMs: number) {
     dispatch({ type: "start" });
 
     if (!(await allowLocation())) return dispatch({ type: "startFailed", problem: "need_location" });
-    const place = await findPlace(destination);
-
-    if (!place) return dispatch({ type: "startFailed", problem: "not_found" });
 
     // The server picks the circle's language from settings, so it must know the one on screen now. Failing to say isn't a reason not to start.
     await saveSettings({ locale });
 
     const started = await startJourney({
-      destination: { name: destination.trim(), ...place },
-      expectedArrivalAt: Date.now() + minutes * MINUTE_MS,
+      destination: { name: destination.name, lat: destination.lat, lng: destination.lng },
+      expectedArrivalAt: Date.now() + travelMs,
       lostContactEnabled: true,
       locale,
     });
@@ -139,7 +132,7 @@ export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
 
   switch (state.name) {
     case "plan":
-      return <PlanView busy={state.busy} problem={state.problem} onStart={start} onSettings={onSettings} />;
+      return <PlanView busy={state.busy} problem={state.problem} locale={locale} onStart={start} onSettings={onSettings} />;
     case "ended":
       return <EndedView onNewTrip={() => dispatch({ type: "newTrip" })} />;
     case "travelling":
@@ -161,78 +154,6 @@ function useNow(on: boolean): number {
   }, [on]);
 
   return now;
-}
-
-/** Screen 01, without the map: where to, and when you'll get there. */
-function PlanView({
-  busy,
-  problem,
-  onStart,
-  onSettings,
-}: {
-  busy: boolean;
-  problem: "not_found" | "need_location" | "error" | null;
-  onStart: (destination: string, minutes: number) => void;
-  onSettings: () => void;
-}) {
-  const { t } = useTranslation();
-  const [destination, setDestination] = useState("");
-  const [minutes, setMinutes] = useState<number>(ARRIVAL_CHOICES[1]);
-
-  const problems = { not_found: "plan.notFound", need_location: "plan.needLocation", error: "plan.error" } as const;
-
-  return (
-    <Screen
-      footer={
-        <PrimaryButton
-          label={t("journey.start")}
-          busy={busy}
-          disabled={destination.trim().length === 0}
-          onPress={() => onStart(destination, minutes)}
-        />
-      }
-    >
-      <View style={styles.top}>
-        <Text style={text("brandHeader")}>{t("app.name")}</Text>
-        {/* A text button until the icon font has a gear. */}
-        <Pressable accessibilityRole="button" onPress={onSettings} hitSlop={8}>
-          <Text style={text("body")}>{t("settings.title")}</Text>
-        </Pressable>
-      </View>
-      <Title>{t("plan.title")}</Title>
-      <View style={styles.input}>
-        <Icon name="location_on" tint={color.fgSecondary} />
-        <TextInput
-          accessibilityLabel={t("plan.destination")}
-          value={destination}
-          onChangeText={setDestination}
-          placeholder={t("plan.destinationHint")}
-          placeholderTextColor={color.fgTertiary}
-          style={styles.inputText}
-          autoCorrect={false}
-          returnKeyType="done"
-        />
-      </View>
-      <View style={[styles.chips, { marginTop: space[5] }]} accessibilityRole="radiogroup" accessibilityLabel={t("plan.arriveIn")}>
-        <Icon name="schedule" tint={color.fgSecondary} />
-        {ARRIVAL_CHOICES.map((m) => (
-          <Pressable
-            key={m}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: m === minutes }}
-            onPress={() => setMinutes(m)}
-            style={[styles.chip, m === minutes && styles.chipOn]}
-          >
-            <Text style={[text("body"), m === minutes && { color: color.onFg }]}>{t("common.minutes", { count: m })}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <View style={{ marginTop: space[6] }}>
-        <IconLine icon="notifications">{t("plan.checkNote")}</IconLine>
-      </View>
-      {problem ? <Note tone="danger">{t(problems[problem])}</Note> : null}
-    </Screen>
-  );
 }
 
 /** Screens 02 (on route), 03 (are you safe?) and 04 (alert sent), by the server's status. */
@@ -362,23 +283,6 @@ function EndedView({ onNewTrip }: { onNewTrip: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space[5] },
-  input: {
-    marginTop: space[5],
-    height: layout.buttonHeight.lg + 8,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: color.borderStrong,
-    paddingHorizontal: space[4],
-    backgroundColor: color.surface,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space[3],
-  },
-  inputText: { flex: 1, height: "100%", fontSize: 17, color: color.fgPrimary },
-  chips: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space[2] },
-  chip: { paddingHorizontal: space[3], paddingVertical: 6, borderRadius: radius.sm, backgroundColor: color.chip },
-  chipOn: { backgroundColor: color.surfaceInverse },
   badge: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginTop: space[7] },
   arrival: { flexDirection: "row", alignItems: "baseline", gap: space[2], marginTop: space[7] },
   arrivalTime: { fontSize: 48, lineHeight: 56, fontWeight: "500", color: color.fgPrimary },

@@ -28,6 +28,9 @@
     // "console" prints messages to the log. Staging and production use "zalo+sms";
     // the Zalo and SMS settings are listed in src/bindings.ts and .dev.vars.example.
     "MESSAGE_SENDER": "console",
+    // Place search and routes (ADR 0004): "fixed" answers from a few made-up
+    // places; "goong" needs the GOONG_API_KEY secret.
+    "MAPS_PROVIDER": "fixed",
     // Opens /demo, the hackathon demo (src/controllers/demo.controller.ts). Local and the demo env only.
     "DEMO_MODE": "on"
   },
@@ -37,6 +40,9 @@
     "bindings": [{ "name": "JOURNEY", "class_name": "JourneyObject" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["JourneyObject"] }],
+  // Place searches and routes per traveller: 60 a minute is a search on every
+  // keystroke pause and then some. Each one is a paid call to Goong.
+  "ratelimits": [{ "name": "MAPS_RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
   "d1_databases": [
     {
       "binding": "DB",
@@ -56,8 +62,11 @@
         "CIRCLE_WEB_URL": "https://staging.cage.vn",
         // Codes go to the Worker log until the Zalo and SMS settings are in
         // (docs/messaging.md, step 5); then "zalo", then "zalo+sms".
-        "MESSAGE_SENDER": "console"
+        "MESSAGE_SENDER": "console",
+        // "goong" once the GOONG_API_KEY secret is set (docs/deploy.md).
+        "MAPS_PROVIDER": "fixed"
       },
+      "ratelimits": [{ "name": "MAPS_RATE_LIMIT", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } }],
       "durable_objects": {
         "bindings": [{ "name": "JOURNEY", "class_name": "JourneyObject" }]
       },
@@ -81,8 +90,10 @@
         // Only appears in logged messages; the demo page shows its own link.
         "CIRCLE_WEB_URL": "https://cage-web-demo.workers.dev",
         "MESSAGE_SENDER": "console",
+        "MAPS_PROVIDER": "fixed",
         "DEMO_MODE": "on"
       },
+      "ratelimits": [{ "name": "MAPS_RATE_LIMIT", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } }],
       "durable_objects": {
         "bindings": [{ "name": "JOURNEY", "class_name": "JourneyObject" }]
       },
@@ -102,8 +113,11 @@
         "BETTER_AUTH_URL": "https://api.cage.vn",
         "CIRCLE_WEB_URL": "https://cage.vn",
         // Plus the Zalo and SMS vars and secrets in docs/messaging.md.
-        "MESSAGE_SENDER": "zalo+sms"
+        "MESSAGE_SENDER": "zalo+sms",
+        // Needs the GOONG_API_KEY secret.
+        "MAPS_PROVIDER": "goong"
       },
+      "ratelimits": [{ "name": "MAPS_RATE_LIMIT", "namespace_id": "1004", "simple": { "limit": 60, "period": 60 } }],
       "durable_objects": {
         "bindings": [{ "name": "JOURNEY", "class_name": "JourneyObject" }]
       },

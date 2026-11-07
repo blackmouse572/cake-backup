@@ -78,7 +78,31 @@ export const TWILIO = {
   apiBase: "https://api.twilio.com/2010-04-01",
 } as const;
 
-/** How long to wait for a message provider before trying the next channel. */
+/** Goong's REST API (ADR 0004): place search and routes in Vietnam. */
+export const GOONG = {
+  apiBase: "https://rsapi.goong.io",
+  /** Suggestions shown while typing. */
+  suggestLimit: 6,
+  /** Suggestions favour places this close to `near`, in kilometres. */
+  nearRadiusKm: 50,
+  /** Our route modes in Goong's `vehicle` names. */
+  vehicle: { motorbike: "bike", car: "car" },
+} as const;
+
+/** The "fixed" maps provider (local dev, tests): routes are straight lines at these speeds. */
+export const FIXED_MAPS = {
+  speedMps: { motorbike: 7, car: 8 },
+  /** Streets are longer than a straight line. */
+  detour: 1.3,
+} as const;
+
+/**
+ * Searches send `near` rounded to this many decimals (2 is about 1 km), so
+ * the provider learns the area someone is in, not their doorstep.
+ */
+export const NEAR_DECIMALS = 2;
+
+/** How long to wait for a message or maps provider before giving up on it. */
 export const PROVIDER_TIMEOUT_MS = 8_000;
 
 /** The journey token the app sends with location updates (ADR 0002). */

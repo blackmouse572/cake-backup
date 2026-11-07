@@ -1,7 +1,10 @@
 import type { DeliveryLogEntry, Fetch } from "../src/types";
 
+/** A JSON value in a fake provider's answer. */
+export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+
 /** One answer from a fake provider: a JSON body, or `"down"` to fail the request. */
-export type FakeAnswer = { status?: number; json: Record<string, string | number | Record<string, string>> } | "down";
+export type FakeAnswer = { status?: number; json: { [key: string]: Json } } | "down";
 
 /**
  * A `fetch` that answers for Zalo and Twilio from queues of answers, by URL
