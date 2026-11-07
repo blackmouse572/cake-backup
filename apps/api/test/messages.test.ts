@@ -42,6 +42,14 @@ describe("circle messages", () => {
     }
   });
 
+  it("tells the circle calmly when the phone is back after lost contact", () => {
+    expect(messageText({ kind: "back_online", name: "Lan", url }, "vi")).toBe(
+      `Cage đã kết nối lại với Lan. Điện thoại đang gửi vị trí trở lại. Xem tại ${url}`,
+    );
+    expect(messageText({ kind: "back_online", name: "Lan", url }, "en")).toContain(url);
+    expect(messageText({ kind: "back_online", name: "Lan", url }, "en")).not.toContain("!");
+  });
+
   it("has a message for every alert reason in every language", () => {
     for (const locale of ["vi", "en"] as const) {
       for (const reason of ["no_answer", "duress", "sos", "lost_contact"] as const) {

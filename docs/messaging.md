@@ -73,6 +73,7 @@ Circle messages go by SMS until these are approved; then each kind gets its own 
 | `alert` (`sos`) | `name` | <name> vừa bấm SOS. Hãy nhắn tin trước, đừng gọi ngay. | Xem vị trí, `url` |
 | `alert` (`lost_contact`) | `name` | Cage mất kết nối với <name> sau giờ dự kiến đến nơi. | Xem vị trí cuối, `url` |
 | `safe_now` | `name` | <name> đã báo an toàn bằng mã an toàn. Bạn không cần làm gì thêm. | none |
+| `back_online` | `name` | Cage đã kết nối lại với <name>. Điện thoại đang gửi vị trí trở lại. | Xem chuyến đi, `url` |
 | `codes_reset` | `name` | <name> vừa đặt lại mã trên Cage. Nếu <name> chưa nhắc gì về việc này, hãy gọi hỏi thăm <name>. | none |
 
 Things to check while submitting, because Zalo's rules change and the guides online disagree: whether a web button can take a different URL per message (each circle link has its own token), how long a parameter may be (a destination can be long), and whether one template per alert reason is needed or one alert template with the reason text as a parameter is accepted. Write down what Zalo says here.

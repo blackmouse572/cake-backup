@@ -26,6 +26,8 @@ export type Message =
   /** `likelyBatteryDied` changes only the lost-contact message: the last update had a nearly empty battery. */
   | { kind: "alert"; reason: AlertReason; name: string; url: string; likelyBatteryDied?: boolean }
   | { kind: "safe_now"; name: string }
+  /** The phone is heard from again after lost contact (#23, screen 16). */
+  | { kind: "back_online"; name: string; url: string }
   /** The traveller reset both codes with "Quên mã?" (#35). Never says which code or the new ones. */
   | { kind: "codes_reset"; name: string };
 
