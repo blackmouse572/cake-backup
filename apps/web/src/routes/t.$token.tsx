@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { LiveJourney } from "../components/circle-view";
 import { LanguageLinks, LocaleProvider } from "../i18n";
-import { getCircleJourney } from "../server/functions";
+import { getCircleJourney, markCircleLinkOpened } from "../server/functions";
 
 /** How often the open page asks for the latest position. */
 const REFRESH_MS = 10_000;
@@ -25,6 +25,7 @@ export const Route = createFileRoute("/t/$token")({
 
 function JourneyPage() {
   const { journey, locale, now } = Route.useLoaderData();
+  const { token } = Route.useParams();
   const router = useRouter();
 
   useEffect(() => {
@@ -36,6 +37,8 @@ function JourneyPage() {
 
   return (
     <LocaleProvider locale={locale}>
+      {/* Keyed on the alert, so each new alert counts as opened again for a contact already looking. */}
+      {journey ? <MarkOpened key={journey.alert?.raisedAt ?? "none"} token={token} /> : null}
       {journey ? (
         <LiveJourney journey={journey} locale={locale} now={now} />
       ) : (
@@ -43,6 +46,18 @@ function JourneyPage() {
       )}
     </LocaleProvider>
   );
+}
+
+/**
+ * Tells the API the page loaded in the contact's browser. Link previews don't
+ * run scripts, so they never count as the circle having opened an alert.
+ */
+function MarkOpened({ token }: { token: string }) {
+  useEffect(() => {
+    void markCircleLinkOpened({ data: { token } }).catch(() => undefined);
+  }, [token]);
+
+  return null;
 }
 
 function TripEnded({ locale }: { locale: Locale }) {

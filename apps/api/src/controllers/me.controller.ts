@@ -31,6 +31,19 @@ async function tellCircleCodesReset(env: AuthedEnv["Bindings"], userId: string):
   }
 }
 
+/**
+ * The duress PIN was entered to sign out or change the codes: every open
+ * journey alerts its circle. Runs after the answer is sent, so the duress PIN
+ * answers exactly like the safe code, and a failure here never shows.
+ */
+async function alertOpenJourneys(env: AuthedEnv["Bindings"], userId: string): Promise<void> {
+  try {
+    await journeysService(createDb(env.DB), env.JOURNEY, env.CODE_PEPPER).alertDuress(userId);
+  } catch (err) {
+    logError(err instanceof Error ? err : new Error(String(err)), "me.duress");
+  }
+}
+
 /** `/me`: the signed-in traveller's own account. HTTP in and out only; rules are in the services. */
 export const meController = new Hono<AuthedEnv>()
   .use(requireSession)
@@ -62,6 +75,8 @@ export const meController = new Hono<AuthedEnv>()
 
         return c.body(null, 204);
       case "duress":
+        c.executionCtx.waitUntil(alertOpenJourneys(c.env, c.var.userId));
+
         return c.body(null, 204);
       case "current_required":
         return c.json(failure(result), 400);
@@ -81,6 +96,10 @@ export const meController = new Hono<AuthedEnv>()
 
     switch (result) {
       case "ok":
+        return c.body(null, 204);
+      case "duress":
+        c.executionCtx.waitUntil(alertOpenJourneys(c.env, c.var.userId));
+
         return c.body(null, 204);
       case "wrong_code":
         return c.json(failure(result), 403);

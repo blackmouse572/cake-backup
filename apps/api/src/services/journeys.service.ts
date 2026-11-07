@@ -111,5 +111,10 @@ export function journeysService(db: Db, objects: DurableObjectNamespace<JourneyO
 
       return views.some((v) => v !== null && v.status !== "ended");
     },
+
+    /** The duress PIN, entered outside a journey's own screens: every journey still running alerts its circle. */
+    async alertDuress(userId: string): Promise<void> {
+      await Promise.all((await repo.notEndedIds(userId)).map((id) => stub(id).duress()));
+    },
   };
 }

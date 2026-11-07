@@ -71,6 +71,8 @@ export function demoService(
         travellerName: displayName(account?.name ?? "", phone),
         travellerPhone: phone,
         demo: true,
+        // The dashboard shows the circle's page as it would look with police on, for the walkthrough.
+        policeEnabled: true,
         circle: circle.map((c) => ({ name: c.name, phone: maskPhone(c.phone) })),
       };
     },
