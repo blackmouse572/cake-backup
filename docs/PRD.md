@@ -47,6 +47,10 @@ These patterns are from general knowledge and still need checking against source
 - Works in the app and on the check-in call.
 - Looks exactly like "I'm safe" in the UI, timing and network behaviour, while sending the alert quietly.
 
+### Wrong codes on a journey
+- Five wrong codes on a journey (check-ins and ending it share the count) lock every code for 5 minutes, the safe code and the duress PIN included, so whoever holds the phone can't try all 10,000 codes and stop at the one that works. During a check-in they also count as no answer and alert the circle.
+- The count starts again once 5 minutes pass without a wrong code.
+
 ### Forgot code ("Quên mã?")
 - During a journey there is no way to reset the codes. The code screen says so: let the time run out and Cage tells the circle (screen 26). Otherwise whoever holds the phone could take the codes over mid-journey.
 - Outside a journey the traveller resets both codes with a new sign-in code to their phone (Zalo or SMS) instead of the current safe code. The server takes the reset only from a session created in the last 10 minutes, so an old session alone is not enough. Right after signing in on a new phone (08c), the code just verified counts.

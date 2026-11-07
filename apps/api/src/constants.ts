@@ -95,9 +95,16 @@ export const CIRCLE_LINK = {
   bytes: 16,
 } as const;
 
-/** Wrong codes allowed on one check-in before it counts as no answer. */
+/**
+ * Wrong codes allowed on a journey (check-ins and ending it) before it counts
+ * as no answer and every code, the right one included, is refused for
+ * `lockMs`. Otherwise whoever holds the phone could try all 10,000 codes and
+ * stop at the first one that works. The count starts again once `lockMs`
+ * passes without a wrong code.
+ */
 export const CHECK_IN = {
   wrongTries: 5,
+  lockMs: 5 * MINUTE_MS,
 } as const;
 
 /** The hackathon demo dashboard (`DEMO_MODE`, `/demo`). */

@@ -56,8 +56,10 @@ interface JourneyState {
   /** When the server next looks at this journey on its own, or null. */
   deadlineAt: number | null;
   alert: Alert | null;
-  /** Wrong codes in a row on a check-in or at the end. */
+  /** Wrong codes on check-ins and at the end, until `CHECK_IN.lockMs` passes without one. */
   wrongCodes: number;
+  /** When the last wrong code was entered. Missing on journeys started before the lock. */
+  wrongCodeAt?: number | null;
   /**
    * Messages for the circle, sent from the alarm rather than inside the
    * request, so the duress PIN answers exactly as fast as the safe code.
@@ -109,6 +111,7 @@ export class JourneyObject extends DurableObject<Bindings> {
       deadlineAt: arrivalDeadline(input.expectedArrivalAt),
       alert: null,
       wrongCodes: 0,
+      wrongCodeAt: null,
       syncedStatus: "active",
       outbox: [
         { kind: "journey_started", destination: input.destination.name, arriveAt: input.expectedArrivalAt },
@@ -191,12 +194,15 @@ export class JourneyObject extends DurableObject<Bindings> {
   /**
    * Answers a check-in. The safe code clears any check-in or alert and the
    * journey carries on; the duress PIN looks the same on the phone but
-   * alerts the circle. Too many wrong codes count as no answer.
+   * alerts the circle. Too many wrong codes count as no answer, and lock out
+   * every code for a while.
    */
   async answer(check: CodeCheck, now = Date.now()): Promise<CodeResult> {
     const state = await this.load();
 
     if (!state || state.status === "ended") return "not_found";
+
+    if (lockedOut(state, now)) return "too_many_tries";
 
     if (check === "wrong") return this.wrongCode(state, now);
 
@@ -227,6 +233,8 @@ export class JourneyObject extends DurableObject<Bindings> {
     const state = await this.load();
 
     if (!state || state.status === "ended") return "not_found";
+
+    if (lockedOut(state, now)) return "too_many_tries";
 
     if (check === "wrong") return this.wrongCode(state, now);
 
@@ -366,8 +374,10 @@ export class JourneyObject extends DurableObject<Bindings> {
   }
 
   private async wrongCode(state: JourneyState, now: number): Promise<CodeResult> {
-    if (state.wrongCodes >= CHECK_IN.wrongTries) return "too_many_tries";
-    state.wrongCodes += 1;
+    // An old run of wrong codes no longer counts once the lock time has passed without one.
+    const recent = now - (state.wrongCodeAt ?? 0) < CHECK_IN.lockMs;
+    state.wrongCodes = (recent ? state.wrongCodes : 0) + 1;
+    state.wrongCodeAt = now;
 
     // Someone guessing at the code during a check-in is no answer.
     if (state.wrongCodes >= CHECK_IN.wrongTries && state.status === "check_in") {
@@ -422,6 +432,15 @@ export class JourneyObject extends DurableObject<Bindings> {
     if (next === null) await this.ctx.storage.deleteAlarm();
     else await this.ctx.storage.setAlarm(next);
   }
+}
+
+/**
+ * True while too many wrong codes were entered too recently. The caller
+ * refuses every code then, the safe code and the duress PIN included, so
+ * guessing can't stop at the first code that works.
+ */
+function lockedOut(state: JourneyState, now: number): boolean {
+  return state.wrongCodes >= CHECK_IN.wrongTries && now - (state.wrongCodeAt ?? 0) < CHECK_IN.lockMs;
 }
 
 function travellerView(state: JourneyState): JourneyView {

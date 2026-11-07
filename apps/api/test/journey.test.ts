@@ -449,6 +449,19 @@ describe("the safety circle's links", () => {
   });
 });
 
+/** Enters wrong codes until the journey refuses every code. */
+async function lockOut(id: string, action: "answer" | "end", cookie: string) {
+  for (let i = 0; i < CHECK_IN.wrongTries; i++) await enter(id, action, "1111", cookie);
+}
+
+/** Pretends the last wrong code was entered longer ago than the lock lasts. */
+async function passLock(id: string) {
+  await runInDurableObject(stubFor(id), async (_obj: JourneyObject, state) => {
+    const s = await state.storage.get<{ wrongCodeAt: number }>("state");
+    await state.storage.put("state", { ...s, wrongCodeAt: Date.now() - CHECK_IN.lockMs - 1 });
+  });
+}
+
 describe("check-ins and the duress PIN", () => {
   it("lets the phone ask for a check-in", async () => {
     const { journey, cookie } = await startJourney();
@@ -493,6 +506,27 @@ describe("check-ins and the duress PIN", () => {
 
     expect((await enter(journey.id, "answer", "1111", cookie)).status).toBe(429);
     expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("no_answer");
+  });
+
+  it("refuses even the safe code once too many wrong codes were entered, and keeps the alert", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await lockOut(journey.id, "answer", cookie);
+
+    const res = await enter(journey.id, "answer", SAFE, cookie);
+    expect(res.status).toBe(429);
+    expect(await readError(res)).toBe("too_many_tries");
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("no_answer");
+  });
+
+  it("takes the safe code again once the lock has passed", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await lockOut(journey.id, "answer", cookie);
+    await passLock(journey.id);
+
+    expect((await enter(journey.id, "answer", SAFE, cookie)).status).toBe(204);
+    expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
   });
 
   it("clears an alert with the safe code and tells the circle", async () => {
@@ -547,6 +581,48 @@ describe("ending a journey", () => {
     const res = await enter(journey.id, "end", "1111", cookie);
     expect(res.status).toBe(403);
     expect((await travellerView(journey.id, cookie)).status).toBe("active");
+  });
+
+  it("refuses the safe code and the duress PIN alike once too many wrong codes were entered", async () => {
+    const { journey, cookie } = await startJourney();
+    await lockOut(journey.id, "end", cookie);
+
+    for (const code of [SAFE, DURESS]) {
+      const res = await enter(journey.id, "end", code, cookie);
+      expect(res.status).toBe(429);
+      expect(await readError(res)).toBe("too_many_tries");
+    }
+
+    expect((await travellerView(journey.id, cookie)).status).toBe("active");
+    expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
+  });
+
+  it("shares the lock between check-ins and ending the journey", async () => {
+    const { journey, cookie } = await startJourney();
+    await lockOut(journey.id, "end", cookie);
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+
+    expect((await enter(journey.id, "answer", SAFE, cookie)).status).toBe(429);
+  });
+
+  it("ends with the safe code once the lock has passed", async () => {
+    const { journey, cookie } = await startJourney();
+    await lockOut(journey.id, "end", cookie);
+    await passLock(journey.id);
+
+    expect((await enter(journey.id, "end", SAFE, cookie)).status).toBe(204);
+    expect((await travellerView(journey.id, cookie)).status).toBe("ended");
+  });
+
+  it("starts counting wrong codes again once the lock time passes without one", async () => {
+    const { journey, cookie } = await startJourney();
+
+    for (let i = 1; i < CHECK_IN.wrongTries; i++) await enter(journey.id, "end", "1111", cookie);
+    await passLock(journey.id);
+
+    const res = await enter(journey.id, "end", "1111", cookie);
+    expect(res.status).toBe(403);
+    expect(await readError(res)).toBe("wrong_code");
   });
 
   it("shows the phone an ended journey after the duress PIN, while the circle sees the alert", async () => {
