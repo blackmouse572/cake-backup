@@ -50,6 +50,11 @@ export const journeysController = new Hono<AppEnv>()
 
     return view ? c.json(success(view)) : c.json(failure("not_found"), 404);
   })
+  .post("/:id/sos", requireSession, async (c) => {
+    const view = await service(c.env).sos(c.var.userId, c.req.param("id"));
+
+    return view ? c.json(success(view)) : c.json(failure("not_found"), 404);
+  })
   .post("/:id/answer", requireSession, validate("json", EnterCode), async (c) => {
     return codeResponse(c, await service(c.env).answer(c.var.userId, c.req.param("id"), c.req.valid("json").code));
   })

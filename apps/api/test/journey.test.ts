@@ -550,6 +550,100 @@ describe("check-ins and the duress PIN", () => {
   });
 });
 
+const sos = (id: string, cookie: string) => api(`/journeys/${id}/sos`, { method: "POST", headers: { cookie } });
+
+const alertCount = (id: string) =>
+  countRows("select count(*) as n from alert_events where journey_id = ?", id);
+
+describe("SOS", () => {
+  it("needs a session", async () => {
+    const { journey } = await startJourney();
+    const res = await api(`/journeys/${journey.id}/sos`, { method: "POST" });
+
+    expect(res.status).toBe(401);
+    expect(await readError(res)).toBe("unauthorized");
+  });
+
+  it("alerts the circle at once, with no code, and shows the phone the alert", async () => {
+    const { journey, cookie } = await startJourney();
+    const res = await sos(journey.id, cookie);
+
+    expect(res.status).toBe(200);
+    expect(await readData(res, JourneyView)).toMatchObject({ status: "alerted" });
+    expect((await travellerView(journey.id, cookie)).status).toBe("alerted");
+    expect(await circleView(await linkFor(journey.id))).toMatchObject({ status: "alerted", alert: { reason: "sos" } });
+
+    await flush(journey.id);
+    expect(await alertCount(journey.id)).toBe(1);
+  });
+
+  it("alerts in the middle of a check-in too", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+
+    expect((await sos(journey.id, cookie)).status).toBe(200);
+
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("sos");
+  });
+
+  it("tells the circle once, however often it is pressed", async () => {
+    const { journey, cookie } = await startJourney();
+    await sos(journey.id, cookie);
+    await flush(journey.id);
+
+    expect((await sos(journey.id, cookie)).status).toBe(200);
+    await flush(journey.id);
+
+    expect(await alertCount(journey.id)).toBe(1);
+  });
+
+  it("raises a lost-contact alert to an SOS", async () => {
+    const { journey, cookie } = await startJourney();
+    await runInDurableObject(stubFor(journey.id), async (_obj: JourneyObject, state) => {
+      const s = await state.storage.get<{ lastHeardAt: number }>("state");
+      await state.storage.put("state", { ...s, lastHeardAt: Date.now() - TIMERS.staleUpdateMs - 1 });
+    });
+    await passDeadline(journey.id);
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("lost_contact");
+
+    expect((await sos(journey.id, cookie)).status).toBe(200);
+
+    expect(await stubFor(journey.id).circleView()).toMatchObject({ status: "alerted", alert: { reason: "sos" } });
+  });
+
+  it("leaves a duress alert as it is", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await enter(journey.id, "answer", DURESS, cookie);
+
+    expect((await sos(journey.id, cookie)).status).toBe(200);
+
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("duress");
+  });
+
+  it("answers someone else's journey and an ended one with 404", async () => {
+    const { journey, cookie } = await startJourney();
+    const other = await traveller();
+
+    expect((await sos(journey.id, other)).status).toBe(404);
+
+    await endJourney(journey.id);
+
+    const res = await sos(journey.id, cookie);
+    expect(res.status).toBe(404);
+    expect(await readError(res)).toBe("not_found");
+  });
+
+  it("is cleared by the safe code, like any other alert", async () => {
+    const { journey, cookie } = await startJourney();
+    await sos(journey.id, cookie);
+
+    expect((await enter(journey.id, "answer", SAFE, cookie)).status).toBe(204);
+
+    expect(await stubFor(journey.id).circleView()).toMatchObject({ status: "active", alert: null });
+  });
+});
+
 describe("ending a journey", () => {
   it("ends with the safe code, drops the location and kills the token", async () => {
     const { journey, journeyToken, cookie } = await startJourney();
