@@ -1,7 +1,7 @@
 import type { Db } from "@cage/db";
 import { codesProblem, type CodeCheck, type CodeProblem, type ResetCodes, type SetCodes } from "@cage/shared";
 import { CHANGE_CODES, RESET_CODES } from "../constants";
-import { travellerSettingsRepository } from "../repositories/traveller-settings.repository";
+import { travellerSettingsRepository, type TravellerSettings } from "../repositories/traveller-settings.repository";
 import { hashCode, matchesHash } from "../utils";
 
 /**
@@ -25,7 +25,10 @@ export async function checkCode(
 
 export type SetCodesResult = "ok" | CodeProblem | "current_required" | "wrong_code" | "too_many_tries";
 
-export type ResetCodesResult = "ok" | CodeProblem | "reverify_required" | "journey_open";
+/** "safe" and "no_codes" end the session; "duress" only looks as if it did. */
+export type SignOutResult = "safe" | "duress" | "no_codes" | "current_required" | "wrong_code" | "too_many_tries";
+
+export type ResetCodesResult ="ok" | CodeProblem | "reverify_required" | "journey_open";
 
 /** What the forgot-code path needs to know about journeys. */
 export interface OpenJourneys {
@@ -36,11 +39,52 @@ export interface OpenJourneys {
 export function codesService(db: Db, pepper: string, journeys: OpenJourneys) {
   const settings = travellerSettingsRepository(db);
 
+  /**
+   * Checks a code behind the wrong-try lock that changing the codes and
+   * signing out share, and counts a wrong code against it. The caller has
+   * already seen that the codes are set.
+   */
+  async function tryCode(
+    userId: string,
+    row: TravellerSettings,
+    code: string,
+    now: number,
+  ): Promise<CodeCheck | "too_many_tries"> {
+    const recent = row.codeFailedAt && now - row.codeFailedAt.getTime() < CHANGE_CODES.windowMs;
+    const failures = recent ? row.codeFailures : 0;
+
+    if (failures >= CHANGE_CODES.tries) return "too_many_tries";
+
+    const check = await checkCode(pepper, { safe: row.safeCodeHash, duress: row.duressCodeHash }, code);
+
+    if (check === "wrong") await settings.recordCodeFailure(userId, failures + 1, new Date(now));
+
+    return check;
+  }
+
   return {
     async check(userId: string, code: string): Promise<CodeCheck> {
       const row = await settings.find(userId);
 
       return checkCode(pepper, { safe: row?.safeCodeHash ?? null, duress: row?.duressCodeHash ?? null }, code);
+    },
+
+    /**
+     * Whether this traveller may sign out. Signing out needs the safe code,
+     * so a thief holding a signed-in phone can't sign out to stop the alerts.
+     * The duress PIN is told apart only here: the caller answers it like the
+     * safe code but keeps the session. With no codes set yet there is nothing
+     * to protect, so the traveller may sign out without one.
+     */
+    async confirmSignOut(userId: string, code: string | undefined, now = Date.now()): Promise<SignOutResult> {
+      const row = await settings.find(userId);
+
+      if (!row?.safeCodeHash) return "no_codes";
+
+      if (!code) return "current_required";
+      const check = await tryCode(userId, row, code, now);
+
+      return check === "wrong" ? "wrong_code" : check;
     },
 
     /**
@@ -58,18 +102,11 @@ export function codesService(db: Db, pepper: string, journeys: OpenJourneys) {
 
       if (row?.safeCodeHash) {
         if (!current) return "current_required";
-        const recent = row.codeFailedAt && now - row.codeFailedAt.getTime() < CHANGE_CODES.windowMs;
-        const failures = recent ? row.codeFailures : 0;
+        const check = await tryCode(userId, row, current, now);
 
-        if (failures >= CHANGE_CODES.tries) return "too_many_tries";
+        if (check === "too_many_tries") return check;
 
-        const check = await checkCode(pepper, { safe: row.safeCodeHash, duress: row.duressCodeHash }, current);
-
-        if (check === "wrong") {
-          await settings.recordCodeFailure(userId, failures + 1, new Date(now));
-
-          return "wrong_code";
-        }
+        if (check === "wrong") return "wrong_code";
 
         // Raising the alert for an active journey comes with the alert engine (#22).
         if (check === "duress") return "ok";

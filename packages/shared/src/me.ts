@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Code } from "./codes";
 
 /** `GET /me`: what the app needs to decide between a new and a returning traveller (screen 08c). */
 export const Me = z.object({
@@ -28,6 +29,14 @@ export const SetSettings = z
   .refine((settings) => Object.keys(settings).length > 0, { message: "Nothing to change" });
 
 export type SetSettings = z.infer<typeof SetSettings>;
+
+/**
+ * Body of `POST /me/sign-out`: the safe code or the duress PIN. Both get the
+ * same answer. The code may be left out only while no codes are set yet.
+ */
+export const SignOut = z.object({ code: Code.optional() });
+
+export type SignOut = z.infer<typeof SignOut>;
 
 /** Body of `PUT /me/name`: the name the circle sees in messages and on the web page. */
 export const SetName = z.object({ name: z.string().trim().min(1).max(50) });

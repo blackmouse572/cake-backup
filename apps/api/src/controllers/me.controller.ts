@@ -1,6 +1,8 @@
 import { createDb } from "@cage/db";
-import { failure, ResetCodes, SetCodes, SetName, SetSettings, success } from "@cage/shared";
+import { failure, ResetCodes, SetCodes, SetName, SetSettings, SignOut, success } from "@cage/shared";
 import { Hono } from "hono";
+import { createAuth } from "../auth";
+import { logError } from "../middleware/request-log";
 import { requireSession } from "../middleware/require-session";
 import { validate } from "../middleware/validate";
 import { codesService } from "../services/codes.service";
@@ -29,6 +31,34 @@ export const meController = new Hono<AuthedEnv>()
     await meService(createDb(c.env.DB)).updateSettings(c.var.userId, c.req.valid("json"));
 
     return c.body(null, 204);
+  })
+  /**
+   * Signs out with the safe code (screen 20). The duress PIN gets the same
+   * 204 but keeps the session. The session ends after the answer is sent, so
+   * both codes take the same time.
+   */
+  .post("/sign-out", validate("json", SignOut), async (c) => {
+    const result = await codes(c.env).confirmSignOut(c.var.userId, c.req.valid("json").code);
+
+    switch (result) {
+      case "safe":
+      case "no_codes":
+        c.executionCtx.waitUntil(
+          createAuth(c.env)
+            .api.signOut({ headers: c.req.raw.headers })
+            .catch((err) => logError(err instanceof Error ? err : new Error(String(err)), "me.sign-out")),
+        );
+
+        return c.body(null, 204);
+      case "duress":
+        return c.body(null, 204);
+      case "current_required":
+        return c.json(failure(result), 400);
+      case "wrong_code":
+        return c.json(failure(result), 403);
+      case "too_many_tries":
+        return c.json(failure(result), 429);
+    }
   })
   /**
    * Sets the safe code and duress PIN (screens 10 and 10b) or changes them
