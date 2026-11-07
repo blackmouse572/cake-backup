@@ -78,24 +78,24 @@ export function circleMessagesService(db: Db, sender: MessageSender, webUrl: str
      * A quiet heads-up after "Quên mã?" reset the codes (#35, PRD "Forgot
      * code"): someone holding the phone and SIM could do it too, so the circle
      * hearing about it is the only signal left. No link, since no journey is
-     * open. One contact's failure never stops the others. Returns how many
-     * were sent.
+     * open. Sent to everyone at once, because it runs in the short time a
+     * Worker has after its response, and one contact's failure never stops
+     * the others. Returns how many were sent.
      */
     async codesReset(userId: string): Promise<number> {
       const [circle, account, row] = await Promise.all([contacts.list(userId), users.find(userId), settings.find(userId)]);
       const message: Message = { kind: "codes_reset", name: displayName(account?.name ?? "", account?.phoneNumber ?? "") };
       const locale = row?.locale ?? "vi";
-      let sent = 0;
+      const results = await Promise.allSettled(circle.map((c) => sender.send({ to: c.phone, locale, message })));
 
-      for (const contact of circle) {
-        try {
-          sent += (await sender.send({ to: contact.phone, locale, message })) === "sent" ? 1 : 0;
-        } catch (err) {
-          logError(err instanceof Error ? err : new Error(String(err)), "circle-messages.codesReset");
+      for (const result of results) {
+        if (result.status === "rejected") {
+          const err = result.reason instanceof Error ? result.reason : new Error(String(result.reason));
+          logError(err, "circle-messages.codesReset");
         }
       }
 
-      return sent;
+      return results.filter((r) => r.status === "fulfilled" && r.value === "sent").length;
     },
   };
 }

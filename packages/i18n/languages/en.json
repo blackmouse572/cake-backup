@@ -242,7 +242,7 @@
     },
     "lostContactBattery": "Cage lost contact with {{name}} after they were due to arrive. Their battery was nearly empty, so the phone probably died. Last location at {{url}}",
     "safeNow": "{{name}} confirmed they're safe with their safe code. Nothing more to do.",
-    "codesReset": "{{name}} just reset their codes in Cage. If {{name}} hasn't mentioned it, give them a call to check in."
+    "codesReset": "{{name}} just reset their codes in Cage. If {{name}} hasn't mentioned it, give them a call to check on them."
   },
   "demo": {
     "band": "Demo server · No messages sent, no real calls",
