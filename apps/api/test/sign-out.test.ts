@@ -1,5 +1,5 @@
-import { CHANGE_CODES } from "../src/constants";
 import { describe, expect, it, vi } from "vitest";
+import { CHANGE_CODES } from "../src/constants";
 import { api, readError, send, signIn } from "./helpers";
 
 const SAFE = "2580";
@@ -87,6 +87,19 @@ describe("signing out needs the safe code", () => {
 
     await vi.waitFor(async () => expect(await meStatus(cookie)).toBe(401));
   });
+});
+
+describe("the same routes written another way", () => {
+  it.each(["/auth/sign-out/", "/auth//sign-out", "/auth/sign-out?x=1", "/auth/Sign-Out"])(
+    "%s does not end the session either",
+    async (path) => {
+      const cookie = await traveller();
+
+      await api(path, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: "{}" });
+
+      expect(await meStatus(cookie)).toBe(200);
+    },
+  );
 });
 
 describe("the routes that end a session without a code", () => {

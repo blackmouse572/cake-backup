@@ -79,19 +79,7 @@ function AccountLoader({
   );
 }
 
-function SettingsScreens({
-  me,
-  onBack,
-  onCircle,
-  onChangeCodes,
-  onSignedOut,
-}: {
-  me: Me;
-  onBack: () => void;
-  onCircle: () => void;
-  onChangeCodes: () => void;
-  onSignedOut: () => void;
-}) {
+function SettingsScreens({ me, onBack, onCircle, onChangeCodes, onSignedOut }: SettingsProps & { me: Me }) {
   const { t, i18n } = useTranslation();
   const locale: Locale = isLocale(i18n.language) ? i18n.language : "vi";
   const [state, dispatch] = useReducer(settingsReducer, { policeEnabled: me.policeEnabled }, initialSettings);
@@ -249,7 +237,7 @@ function CodesView({ onChange, onBack }: { onChange: () => void; onBack: () => v
     <Screen>
       <BackBar onBack={onBack} />
       <Title>{t("settings.codesScreen.title")}</Title>
-      <Section title="">
+      <Section>
         <Row icon="check_circle" label={t("settings.codesScreen.safe")} note={t("settings.codesScreen.safeNote")} value={t("settings.codesScreen.change")} onPress={onChange} />
         <Row icon="notifications" label={t("settings.codesScreen.duress")} note={t("settings.codesScreen.duressNote")} value={t("settings.codesScreen.change")} onPress={onChange} />
       </Section>
@@ -260,7 +248,7 @@ function CodesView({ onChange, onBack }: { onChange: () => void; onBack: () => v
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, children }: { title?: string; children: ReactNode }) {
   return (
     <View style={{ marginTop: space[5] }}>
       {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}

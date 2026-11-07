@@ -26,9 +26,9 @@ export async function checkCode(
 export type SetCodesResult = "ok" | CodeProblem | "current_required" | "wrong_code" | "too_many_tries";
 
 /** "safe" and "no_codes" end the session; "duress" only looks as if it did. */
-export type SignOutResult = "safe" | "duress" | "no_codes" | "current_required" | "wrong_code" | "too_many_tries";
+export type SignOutCheck = "safe" | "duress" | "no_codes" | "current_required" | "wrong_code" | "too_many_tries";
 
-export type ResetCodesResult ="ok" | CodeProblem | "reverify_required" | "journey_open";
+export type ResetCodesResult = "ok" | CodeProblem | "reverify_required" | "journey_open";
 
 /** What the forgot-code path needs to know about journeys. */
 export interface OpenJourneys {
@@ -76,7 +76,7 @@ export function codesService(db: Db, pepper: string, journeys: OpenJourneys) {
      * safe code but keeps the session. With no codes set yet there is nothing
      * to protect, so the traveller may sign out without one.
      */
-    async confirmSignOut(userId: string, code: string | undefined, now = Date.now()): Promise<SignOutResult> {
+    async confirmSignOut(userId: string, code: string | undefined, now = Date.now()): Promise<SignOutCheck> {
       const row = await settings.find(userId);
 
       if (!row?.safeCodeHash) return "no_codes";

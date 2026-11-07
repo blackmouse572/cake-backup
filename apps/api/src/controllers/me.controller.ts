@@ -1,13 +1,12 @@
 import { createDb } from "@cage/db";
 import { failure, ResetCodes, SetCodes, SetName, SetSettings, SignOut, success } from "@cage/shared";
 import { Hono } from "hono";
-import { createAuth } from "../auth";
-import { logError } from "../middleware/request-log";
 import { requireSession } from "../middleware/require-session";
 import { validate } from "../middleware/validate";
 import { codesService } from "../services/codes.service";
 import { journeysService } from "../services/journeys.service";
 import { meService } from "../services/me.service";
+import { sessionsService } from "../services/sessions.service";
 import type { AuthedEnv } from "../types";
 
 const codes = (env: AuthedEnv["Bindings"]) => {
@@ -43,11 +42,7 @@ export const meController = new Hono<AuthedEnv>()
     switch (result) {
       case "safe":
       case "no_codes":
-        c.executionCtx.waitUntil(
-          createAuth(c.env)
-            .api.signOut({ headers: c.req.raw.headers })
-            .catch((err) => logError(err instanceof Error ? err : new Error(String(err)), "me.sign-out")),
-        );
+        c.executionCtx.waitUntil(sessionsService(c.env).end(c.req.raw.headers));
 
         return c.body(null, 204);
       case "duress":
