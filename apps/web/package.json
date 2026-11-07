@@ -7,8 +7,8 @@
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy:staging": "CLOUDFLARE_ENV=staging vite build && wrangler deploy",
-    "deploy:demo": "CLOUDFLARE_ENV=demo vite build && wrangler deploy",
+    "deploy:staging": "CLOUDFLARE_ENV=staging vite build && wrangler deploy --env staging",
+    "deploy:demo": "CLOUDFLARE_ENV=demo vite build && wrangler deploy --env demo",
     "typegen": "wrangler types",
     "typecheck": "tsc"
   },
