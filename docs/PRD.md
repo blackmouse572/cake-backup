@@ -78,7 +78,7 @@ These patterns are from general knowledge and still need checking against source
 
 ### Live map for the circle
 - The circle gets an SMS and Zalo message with a web link to a live map. Installing the app is optional and gives richer alerts.
-- Maps are drawn with MapLibre in the app and on the website. Place search and motorbike routes come from Goong in Vietnam, called only through our API so the provider can change and searches carry no identity ([ADR 0004](adr/0004-maps.md), proposed).
+- Maps are drawn with MapLibre in the app and on the website. Place search and motorbike routes come from Goong in Vietnam, called only through our API so the provider can change and searches carry no identity ([ADR 0004](adr/0004-maps.md)).
 
 ### Accounts and sign-in
 - Travellers register and sign in with their phone number and a one-time code (Zalo first, SMS as fallback). No password, no email.
