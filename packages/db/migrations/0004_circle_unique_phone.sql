@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `circle_contacts_user_phone_idx` ON `circle_contacts` (`user_id`,`phone`);

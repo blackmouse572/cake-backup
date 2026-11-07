@@ -1,0 +1,12 @@
+node_modules/
+.turbo/
+dist/
+.output/
+.wrangler/
+.dev.vars
+.env*.local
+*.tsbuildinfo
+.DS_Store
+expo-env.d.ts
+.expo/
+config.bat

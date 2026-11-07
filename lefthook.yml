@@ -1,0 +1,25 @@
+# Git hooks, installed by `bun install` (the root `prepare` script).
+# Skip once with `LEFTHOOK=0 git commit ...` only when you must; CI runs the same checks.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: oxlint
+      glob: "*.{ts,tsx,js,jsx,mjs,cjs}"
+      exclude:
+        - "tools/oxlint/anti-slop/**"
+        - "**/routeTree.gen.ts"
+        - "**/worker-configuration.d.ts"
+      # Applies safe fixes (such as the anti-slop spacing) and re-stages them.
+      run: bunx oxlint --deny-warnings --fix {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: bunx commitlint --edit {1}
+
+pre-push:
+  jobs:
+    - name: typecheck and test what changed
+      run: bunx turbo run typecheck test --affected

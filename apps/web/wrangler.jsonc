@@ -1,0 +1,39 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  // The safety circle's website (canvas screens 21 to 25). No install, no account.
+  "name": "cage-web",
+  "main": "@tanstack/react-start/server-entry",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Only the custom domains below reach a deployed Worker; staging sits behind
+  // Cloudflare Access (docs/deploy.md), which would not cover *.workers.dev.
+  "workers_dev": false,
+  "preview_urls": false,
+  // Invocation logs record request headers (the visitor's IP), so they are off.
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "logs": { "enabled": true, "invocation_logs": false },
+    "issues": { "enabled": true }
+  },
+  // Calls the API Worker directly, without a public hop (and without Access).
+  // The top level is for `bun run dev`; build with CLOUDFLARE_ENV=<env> to deploy.
+  "services": [{ "binding": "API", "service": "cage-api" }],
+  "env": {
+    "staging": {
+      "routes": [{ "pattern": "staging.cage.vn", "custom_domain": true }],
+      "services": [{ "binding": "API", "service": "cage-api-staging" }]
+    },
+    // The public hackathon demo at cage-web-demo.<account>.workers.dev/demo
+    // (docs/deploy.md, "Hackathon demo"). No custom domain and no Access.
+    "demo": {
+      "workers_dev": true,
+      "services": [{ "binding": "API", "service": "cage-api-demo" }]
+    },
+    // Not deployed until #38 (production and store builds).
+    "production": {
+      "routes": [{ "pattern": "cage.vn", "custom_domain": true }],
+      "services": [{ "binding": "API", "service": "cage-api-production" }]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+# Copy to .dev.vars for `wrangler dev`. Real values are Worker secrets.
+BETTER_AUTH_SECRET=dev-only-secret-change-me-0123456789abcdef
+CODE_PEPPER=dev-only-pepper
+# The demo dashboard (http://localhost:3000/demo) asks for this key.
+DEMO_KEY=dev-demo-key
+
+# To send real messages from `wrangler dev`, set MESSAGE_SENDER here
+# ("zalo+sms", "zalo" or "sms") and fill in what it needs. Never commit these.
+# MESSAGE_SENDER=zalo
+# ZALO_APP_ID=
+# ZALO_APP_SECRET=
+# ZALO_REFRESH_TOKEN=
+# ZALO_ZNS_CODE_TEMPLATE_VI=
+# ZALO_ZNS_CODE_TEMPLATE_EN=
+# ZALO_ZNS_DEVELOPMENT=true
+# SMS_PROVIDER=twilio
+# TWILIO_ACCOUNT_SID=
+# TWILIO_AUTH_TOKEN=
+# SMS_FROM=

@@ -1,0 +1,26 @@
+name: Commit messages
+
+# Pull requests are squash-merged, so the PR title becomes the commit on
+# main. This checks the title against the same Conventional Commits rules
+# that the commit-msg hook applies to every local commit.
+# Separate from CI so it also runs on docs-only pull requests.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+        env:
+          LEFTHOOK: "0"
+      - name: Check the pull request title
+        env:
+          # Passed through the environment, never interpolated into the script.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | bunx commitlint --verbose

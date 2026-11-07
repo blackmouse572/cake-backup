@@ -1,0 +1,120 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "cage-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Only the custom domains below reach a deployed Worker, and staging sits
+  // behind Cloudflare Access (docs/deploy.md). No *.workers.dev or preview URLs, which
+  // Access would not cover.
+  "workers_dev": false,
+  "preview_urls": false,
+  // Workers Logs and Issues (error reporting). Invocation logs are off because
+  // they record request headers, including the caller's IP; the request logger
+  // (src/middleware/request-log.ts) writes what we need without PII.
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "logs": { "enabled": true, "invocation_logs": false },
+    "issues": { "enabled": true }
+  },
+  // The top level is for `wrangler dev` and tests. Deploy with --env.
+  // Secrets (set with `wrangler secret put --env <env>`, or in .dev.vars locally):
+  // BETTER_AUTH_SECRET, CODE_PEPPER. See .dev.vars.example and docs/deploy.md.
+  "vars": {
+    "BETTER_AUTH_URL": "http://localhost:8787",
+    // The circle's website; circle links are <CIRCLE_WEB_URL>/t/<token>.
+    "CIRCLE_WEB_URL": "http://localhost:3000",
+    // "console" prints messages to the log. Staging and production use "zalo+sms";
+    // the Zalo and SMS settings are listed in src/bindings.ts and .dev.vars.example.
+    "MESSAGE_SENDER": "console",
+    // Opens /demo, the hackathon demo (src/controllers/demo.controller.ts). Local and the demo env only.
+    "DEMO_MODE": "on"
+  },
+  // One Durable Object per active journey: its state, its timers (alarm) and,
+  // later, the live map WebSocket. See docs/adr/0001-stack.md.
+  "durable_objects": {
+    "bindings": [{ "name": "JOURNEY", "class_name": "JourneyObject" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["JourneyObject"] }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cage",
+      // Local only (`wrangler dev`, tests). Deployed databases are in the envs below.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../../packages/db/migrations"
+    }
+  ],
+  // Bindings and vars are not inherited, so each environment repeats them.
+  // Database ids come from `wrangler d1 create` (docs/deploy.md).
+  "env": {
+    "staging": {
+      "routes": [{ "pattern": "api-staging.cage.vn", "custom_domain": true }],
+      "vars": {
+        "BETTER_AUTH_URL": "https://api-staging.cage.vn",
+        "CIRCLE_WEB_URL": "https://staging.cage.vn",
+        // Codes go to the Worker log until the Zalo and SMS settings are in
+        // (docs/messaging.md, step 5); then "zalo", then "zalo+sms".
+        "MESSAGE_SENDER": "console"
+      },
+      "durable_objects": {
+        "bindings": [{ "name": "JOURNEY", "class_name": "JourneyObject" }]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "cage-staging",
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "../../packages/db/migrations"
+        }
+      ]
+    },
+    // The public hackathon demo (docs/deploy.md, "Hackathon demo"). Not behind
+    // Access, so it holds fake travellers only: DEMO_MODE opens /demo and
+    // messages only go to the log. The API is on workers.dev so the demo
+    // phone can reach it; the demo website uses its service binding.
+    "demo": {
+      "workers_dev": true,
+      "vars": {
+        "BETTER_AUTH_URL": "https://cage-api-demo.invalid",
+        // Only appears in logged messages; the demo page shows its own link.
+        "CIRCLE_WEB_URL": "https://cage-web-demo.workers.dev",
+        "MESSAGE_SENDER": "console",
+        "DEMO_MODE": "on"
+      },
+      "durable_objects": {
+        "bindings": [{ "name": "JOURNEY", "class_name": "JourneyObject" }]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "cage-demo",
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "../../packages/db/migrations"
+        }
+      ]
+    },
+    // Not deployed until #38 (production and store builds).
+    "production": {
+      "routes": [{ "pattern": "api.cage.vn", "custom_domain": true }],
+      "vars": {
+        "BETTER_AUTH_URL": "https://api.cage.vn",
+        "CIRCLE_WEB_URL": "https://cage.vn",
+        // Plus the Zalo and SMS vars and secrets in docs/messaging.md.
+        "MESSAGE_SENDER": "zalo+sms"
+      },
+      "durable_objects": {
+        "bindings": [{ "name": "JOURNEY", "class_name": "JourneyObject" }]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "cage-production",
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "../../packages/db/migrations"
+        }
+      ]
+    }
+  }
+}

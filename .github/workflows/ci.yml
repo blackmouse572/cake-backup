@@ -1,0 +1,53 @@
+name: CI
+
+# Skipped when a change only touches docs, images or agent skills. On a pull
+# request it checks only the workspaces the change affects (Turborepo
+# --affected follows workspace dependencies: a change in packages/i18n also
+# checks apps/web and apps/mobile). On main it checks everything.
+on:
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "assets/**"
+      - ".agents/**"
+      - ".claude/**"
+      - "**/*.png"
+      - "**/*.svg"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "assets/**"
+      - ".agents/**"
+      - ".claude/**"
+      - "**/*.png"
+      - "**/*.svg"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # --affected compares against the base branch, so it needs the history.
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+        env:
+          LEFTHOOK: "0"
+      # oxlint checks the whole repo in about a second, so it always runs in full.
+      - run: bun run lint
+      - name: Typecheck, test and build (affected workspaces)
+        if: github.event_name == 'pull_request'
+        run: bunx turbo run typecheck test build --affected
+      - name: Typecheck, test and build (everything)
+        if: github.event_name != 'pull_request'
+        run: bunx turbo run typecheck test build

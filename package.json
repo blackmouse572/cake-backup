@@ -1,0 +1,29 @@
+{
+  "name": "cage",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.4",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node init && turbo run dev",
+    "build": "node init && turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "check": "turbo run lint typecheck test",
+    "lint": "oxlint --deny-warnings",
+    "lint:fix": "oxlint --fix",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
+    "@oxlint/plugins": "1.91.0",
+    "lefthook": "^2.2.2",
+    "oxlint": "1.91.0",
+    "turbo": "^2.11.10",
+    "typescript": "~6.0.3"
+  }
+}
