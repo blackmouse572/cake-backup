@@ -73,6 +73,19 @@ export async function sendUpdate(current: Current, update: LocationUpdate): Prom
   }
 }
 
+/** SOS: alerts the circle at once, with no code. Comes back with the journey as the phone should now show it. "gone" when the journey no longer exists for this traveller. */
+export async function sendSos(id: string): Promise<JourneyView | "gone" | "error"> {
+  try {
+    const res = await apiFetch(`/journeys/${encodeURIComponent(id)}/sos`, { method: "POST" });
+
+    if (res.status === 404) return "gone";
+
+    return res.ok ? await readView(res) : "error";
+  } catch {
+    return "error";
+  }
+}
+
 /** The safe code or the duress PIN, to answer a check-in or to end the trip. Both come back "ok". */
 export async function enterCode(
   id: string,

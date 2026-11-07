@@ -240,7 +240,9 @@
       "sos": "{{name}} vừa bấm SOS. Xem vị trí tại {{url}}. Hãy nhắn tin trước, đừng gọi ngay.",
       "lost_contact": "Cage mất kết nối với {{name}} sau giờ dự kiến đến nơi. Xem vị trí cuối tại {{url}}"
     },
-    "safeNow": "{{name}} đã báo an toàn bằng mã an toàn. Bạn không cần làm gì thêm."
+    "lostContactBattery": "Cage mất kết nối với {{name}} sau giờ dự kiến đến nơi. Điện thoại có thể đã hết pin, vì lần cập nhật cuối chỉ còn rất ít. Xem vị trí cuối tại {{url}}",
+    "safeNow": "{{name}} đã báo an toàn bằng mã an toàn. Bạn không cần làm gì thêm.",
+    "codesReset": "{{name}} vừa đặt lại mã trên Cage. Nếu {{name}} chưa nhắc gì về việc này, hãy gọi hỏi thăm {{name}}."
   },
   "demo": {
     "band": "Máy chủ demo · Không gửi tin nhắn, không gọi thật",
@@ -333,7 +335,11 @@
   "onRoute": {
     "arrive": "dự kiến đến",
     "left": "Còn {{minutes}} phút",
-    "sharing": "Vòng an toàn đang thấy vị trí của bạn"
+    "sharing": "Vòng an toàn đang thấy vị trí của bạn",
+    "sos": "Giữ để báo SOS",
+    "sosHint": "Giữ 1 giây để báo vòng an toàn ngay",
+    "sosSending": "Đang báo vòng an toàn",
+    "sosFailed": "Chưa gửi được SOS. Kiểm tra mạng rồi giữ lại."
   },
   "ask": {
     "autoAlert": "Hết giờ mà chưa trả lời, Cage sẽ báo vòng an toàn.",
@@ -346,7 +352,7 @@
     "left": "Còn {{count}} giây",
     "forgot": "Quên mã? Cứ để hết giờ, Cage sẽ báo vòng an toàn.",
     "wrong": "Mã chưa đúng, thử lại.",
-    "tooMany": "Bạn đã nhập sai quá nhiều lần."
+    "tooMany": "Bạn đã nhập sai quá nhiều lần. Hãy thử lại sau ít phút."
   },
   "alerted": {
     "title": "Đã báo vòng an toàn",

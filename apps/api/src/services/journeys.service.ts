@@ -74,6 +74,11 @@ export function journeysService(db: Db, objects: DurableObjectNamespace<JourneyO
       return (await owned(userId, id))?.requestCheckIn() ?? null;
     },
 
+    /** The traveller held SOS. No code: it must work for someone who can't speak or reach their phone for long. */
+    async sos(userId: string, id: string): Promise<JourneyView | null> {
+      return (await owned(userId, id))?.sos() ?? null;
+    },
+
     /**
      * Answers a check-in with the safe code or the duress PIN. Both give the
      * same result to the caller; only the journey object acts on the

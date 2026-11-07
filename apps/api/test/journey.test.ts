@@ -10,7 +10,7 @@ import {
 import { env, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { JourneyObject } from "../src/journey-object";
-import { CHECK_IN } from "../src/constants";
+import { JOURNEY_CODES } from "../src/constants";
 import { hashToken } from "../src/utils";
 import { api, newNumber, readData, readError, send, signIn } from "./helpers";
 
@@ -242,6 +242,31 @@ async function flush(id: string) {
   await runDurableObjectAlarm(stubFor(id));
 }
 
+/** Pretends the phone went quiet long ago. */
+async function goQuiet(id: string) {
+  await runInDurableObject(stubFor(id), async (_obj: JourneyObject, state) => {
+    const s = await state.storage.get<{ lastHeardAt: number }>("state");
+    await state.storage.put("state", { ...s, lastHeardAt: Date.now() - TIMERS.staleUpdateMs - 1 });
+  });
+}
+
+/** The circle's message when the phone went quiet after its last update at this battery level (the test env logs messages). */
+async function lostContactMessage(battery: number): Promise<string> {
+  const { journey, journeyToken } = await startJourney();
+  expect((await sendUpdate(journey.id, journeyToken, reading(battery))).status).toBe(200);
+  await goQuiet(journey.id);
+  await passDeadline(journey.id);
+
+  // rowid is the order of insertion: the start message comes first, the alert last.
+  const row = await env.DB.prepare("select text from demo_messages where journey_id = ? order by rowid desc limit 1")
+    .bind(journey.id)
+    .first<{ text: string }>();
+
+  expect(row).not.toBeNull();
+
+  return row!.text;
+}
+
 const travellerView = async (id: string, cookie: string) =>
   readData(await api(`/journeys/${id}`, { headers: { cookie } }), JourneyView);
 
@@ -282,14 +307,36 @@ describe("journey timers", () => {
   it("alerts the circle with lost contact when the phone is silent at arrival plus buffer", async () => {
     const { journey } = await startJourney();
     const stub = stubFor(journey.id);
-    // Pretend the phone went quiet long ago.
-    await runInDurableObject(stub, async (_obj: JourneyObject, state) => {
-      const s = await state.storage.get<{ lastHeardAt: number }>("state");
-      await state.storage.put("state", { ...s, lastHeardAt: Date.now() - TIMERS.staleUpdateMs - 1 });
-    });
+    await goQuiet(journey.id);
     await passDeadline(journey.id);
     expect((await stub.view())?.status).toBe("lost_contact");
     expect((await stub.circleView())?.alert?.reason).toBe("lost_contact");
+  });
+
+  it("tells the circle the phone probably died when it went quiet at low battery", async () => {
+    const low = await lostContactMessage(0.03);
+    const normal = await lostContactMessage(0.64);
+
+    expect(low).toContain("có thể đã hết pin");
+    expect(normal).toContain("mất kết nối");
+    expect(normal).not.toContain("hết pin");
+  });
+
+  it("checks in instead of losing contact when the traveller turned lost contact off", async () => {
+    const cookie = await traveller();
+    const res = await post("/journeys", { ...start, lostContactEnabled: false }, { cookie });
+    const { journey } = await readData(res, StartedJourney);
+    await goQuiet(journey.id);
+    await passDeadline(journey.id);
+
+    expect((await stubFor(journey.id).view())?.status).toBe("check_in");
+    expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
+
+    const lost = await env.DB.prepare("select count(*) as n from demo_messages where journey_id = ? and text like ?")
+      .bind(journey.id, "%mất kết nối%")
+      .first<{ n: number }>();
+
+    expect(lost?.n).toBe(0);
   });
 
   it("checks in instead when updates are still arriving", async () => {
@@ -402,6 +449,19 @@ describe("the safety circle's links", () => {
   });
 });
 
+/** Enters wrong codes until the journey refuses every code. */
+async function lockOut(id: string, action: "answer" | "end", cookie: string) {
+  for (let i = 0; i < JOURNEY_CODES.wrongTries; i++) await enter(id, action, "1111", cookie);
+}
+
+/** Pretends the last wrong code was entered longer ago than the lock lasts. */
+async function passLock(id: string) {
+  await runInDurableObject(stubFor(id), async (_obj: JourneyObject, state) => {
+    const s = await state.storage.get<{ wrongCodeAt: number }>("state");
+    await state.storage.put("state", { ...s, wrongCodeAt: Date.now() - JOURNEY_CODES.lockMs - 1 });
+  });
+}
+
 describe("check-ins and the duress PIN", () => {
   it("lets the phone ask for a check-in", async () => {
     const { journey, cookie } = await startJourney();
@@ -438,7 +498,7 @@ describe("check-ins and the duress PIN", () => {
     const { journey, cookie } = await startJourney();
     await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
 
-    for (let i = 1; i < CHECK_IN.wrongTries; i++) {
+    for (let i = 1; i < JOURNEY_CODES.wrongTries; i++) {
       const res = await enter(journey.id, "answer", "1111", cookie);
       expect(res.status).toBe(403);
       expect(await readError(res)).toBe("wrong_code");
@@ -448,6 +508,38 @@ describe("check-ins and the duress PIN", () => {
     expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("no_answer");
   });
 
+  it("refuses even the safe code once too many wrong codes were entered, and keeps the alert", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await lockOut(journey.id, "answer", cookie);
+
+    const res = await enter(journey.id, "answer", SAFE, cookie);
+    expect(res.status).toBe(429);
+    expect(await readError(res)).toBe("too_many_tries");
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("no_answer");
+  });
+
+  it("refuses the duress PIN on a check-in while locked, the same as the safe code", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await lockOut(journey.id, "answer", cookie);
+
+    const res = await enter(journey.id, "answer", DURESS, cookie);
+    expect(res.status).toBe(429);
+    expect(await readError(res)).toBe("too_many_tries");
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("no_answer");
+  });
+
+  it("takes the safe code again once the lock has passed", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await lockOut(journey.id, "answer", cookie);
+    await passLock(journey.id);
+
+    expect((await enter(journey.id, "answer", SAFE, cookie)).status).toBe(204);
+    expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
+  });
+
   it("clears an alert with the safe code and tells the circle", async () => {
     const { journey, cookie } = await startJourney();
     await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
@@ -455,6 +547,100 @@ describe("check-ins and the duress PIN", () => {
     expect((await enter(journey.id, "answer", SAFE, cookie)).status).toBe(204);
     const view = await stubFor(journey.id).circleView();
     expect(view).toMatchObject({ status: "active", alert: null });
+  });
+});
+
+const sos = (id: string, cookie: string) => api(`/journeys/${id}/sos`, { method: "POST", headers: { cookie } });
+
+const alertCount = (id: string) =>
+  countRows("select count(*) as n from alert_events where journey_id = ?", id);
+
+describe("SOS", () => {
+  it("needs a session", async () => {
+    const { journey } = await startJourney();
+    const res = await api(`/journeys/${journey.id}/sos`, { method: "POST" });
+
+    expect(res.status).toBe(401);
+    expect(await readError(res)).toBe("unauthorized");
+  });
+
+  it("alerts the circle at once, with no code, and shows the phone the alert", async () => {
+    const { journey, cookie } = await startJourney();
+    const res = await sos(journey.id, cookie);
+
+    expect(res.status).toBe(200);
+    expect(await readData(res, JourneyView)).toMatchObject({ status: "alerted" });
+    expect((await travellerView(journey.id, cookie)).status).toBe("alerted");
+    expect(await circleView(await linkFor(journey.id))).toMatchObject({ status: "alerted", alert: { reason: "sos" } });
+
+    await flush(journey.id);
+    expect(await alertCount(journey.id)).toBe(1);
+  });
+
+  it("alerts in the middle of a check-in too", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+
+    expect((await sos(journey.id, cookie)).status).toBe(200);
+
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("sos");
+  });
+
+  it("tells the circle once, however often it is pressed", async () => {
+    const { journey, cookie } = await startJourney();
+    await sos(journey.id, cookie);
+    await flush(journey.id);
+
+    expect((await sos(journey.id, cookie)).status).toBe(200);
+    await flush(journey.id);
+
+    expect(await alertCount(journey.id)).toBe(1);
+  });
+
+  it("raises a lost-contact alert to an SOS", async () => {
+    const { journey, cookie } = await startJourney();
+    await runInDurableObject(stubFor(journey.id), async (_obj: JourneyObject, state) => {
+      const s = await state.storage.get<{ lastHeardAt: number }>("state");
+      await state.storage.put("state", { ...s, lastHeardAt: Date.now() - TIMERS.staleUpdateMs - 1 });
+    });
+    await passDeadline(journey.id);
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("lost_contact");
+
+    expect((await sos(journey.id, cookie)).status).toBe(200);
+
+    expect(await stubFor(journey.id).circleView()).toMatchObject({ status: "alerted", alert: { reason: "sos" } });
+  });
+
+  it("leaves a duress alert as it is", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await enter(journey.id, "answer", DURESS, cookie);
+
+    expect((await sos(journey.id, cookie)).status).toBe(200);
+
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("duress");
+  });
+
+  it("answers someone else's journey and an ended one with 404", async () => {
+    const { journey, cookie } = await startJourney();
+    const other = await traveller();
+
+    expect((await sos(journey.id, other)).status).toBe(404);
+
+    await endJourney(journey.id);
+
+    const res = await sos(journey.id, cookie);
+    expect(res.status).toBe(404);
+    expect(await readError(res)).toBe("not_found");
+  });
+
+  it("is cleared by the safe code, like any other alert", async () => {
+    const { journey, cookie } = await startJourney();
+    await sos(journey.id, cookie);
+
+    expect((await enter(journey.id, "answer", SAFE, cookie)).status).toBe(204);
+
+    expect(await stubFor(journey.id).circleView()).toMatchObject({ status: "active", alert: null });
   });
 });
 
@@ -500,6 +686,59 @@ describe("ending a journey", () => {
     const res = await enter(journey.id, "end", "1111", cookie);
     expect(res.status).toBe(403);
     expect((await travellerView(journey.id, cookie)).status).toBe("active");
+  });
+
+  it("refuses the safe code and the duress PIN alike once too many wrong codes were entered", async () => {
+    const { journey, cookie } = await startJourney();
+    await lockOut(journey.id, "end", cookie);
+
+    for (const code of [SAFE, DURESS]) {
+      const res = await enter(journey.id, "end", code, cookie);
+      expect(res.status).toBe(429);
+      expect(await readError(res)).toBe("too_many_tries");
+    }
+
+    expect((await travellerView(journey.id, cookie)).status).toBe("active");
+    expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
+  });
+
+  it("shares the lock between check-ins and ending the journey", async () => {
+    const { journey, cookie } = await startJourney();
+    await lockOut(journey.id, "end", cookie);
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+
+    expect((await enter(journey.id, "answer", SAFE, cookie)).status).toBe(429);
+  });
+
+  it("ends with the safe code once the lock has passed", async () => {
+    const { journey, cookie } = await startJourney();
+    await lockOut(journey.id, "end", cookie);
+    await passLock(journey.id);
+
+    expect((await enter(journey.id, "end", SAFE, cookie)).status).toBe(204);
+    expect((await travellerView(journey.id, cookie)).status).toBe("ended");
+  });
+
+  it("doesn't lock a journey that started before the lock and has no time for its wrong codes", async () => {
+    const { journey, cookie } = await startJourney();
+
+    await runInDurableObject(stubFor(journey.id), async (_obj: JourneyObject, state) => {
+      const { wrongCodeAt: _, ...s } = (await state.storage.get<Record<string, number | null>>("state"))!;
+      await state.storage.put("state", { ...s, wrongCodes: JOURNEY_CODES.wrongTries });
+    });
+
+    expect((await enter(journey.id, "end", SAFE, cookie)).status).toBe(204);
+  });
+
+  it("starts counting wrong codes again once the lock time passes without one", async () => {
+    const { journey, cookie } = await startJourney();
+
+    for (let i = 1; i < JOURNEY_CODES.wrongTries; i++) await enter(journey.id, "end", "1111", cookie);
+    await passLock(journey.id);
+
+    const res = await enter(journey.id, "end", "1111", cookie);
+    expect(res.status).toBe(403);
+    expect(await readError(res)).toBe("wrong_code");
   });
 
   it("shows the phone an ended journey after the duress PIN, while the circle sees the alert", async () => {

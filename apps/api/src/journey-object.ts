@@ -17,7 +17,7 @@ import {
 } from "@cage/shared";
 import { DurableObject } from "cloudflare:workers";
 import type { Bindings } from "./bindings";
-import { CHECK_IN } from "./constants";
+import { JOURNEY_CODES } from "./constants";
 import { messageSenderFor } from "./message-sender";
 import { logError } from "./middleware/request-log";
 import { loggingSender } from "./senders/dev.sender";
@@ -56,8 +56,10 @@ interface JourneyState {
   /** When the server next looks at this journey on its own, or null. */
   deadlineAt: number | null;
   alert: Alert | null;
-  /** Wrong codes in a row on a check-in or at the end. */
+  /** Wrong codes on check-ins and at the end, until `JOURNEY_CODES.lockMs` passes without one. */
   wrongCodes: number;
+  /** When the last wrong code was entered. Missing on journeys started before the lock. */
+  wrongCodeAt?: number | null;
   /**
    * Messages for the circle, sent from the alarm rather than inside the
    * request, so the duress PIN answers exactly as fast as the safe code.
@@ -109,6 +111,7 @@ export class JourneyObject extends DurableObject<Bindings> {
       deadlineAt: arrivalDeadline(input.expectedArrivalAt),
       alert: null,
       wrongCodes: 0,
+      wrongCodeAt: null,
       syncedStatus: "active",
       outbox: [
         { kind: "journey_started", destination: input.destination.name, arriveAt: input.expectedArrivalAt },
@@ -189,14 +192,34 @@ export class JourneyObject extends DurableObject<Bindings> {
   }
 
   /**
+   * The traveller held SOS: alerts the circle now, with no code. Lost contact
+   * only ever told the circle calmly, so an SOS raises it; any other alert
+   * stays as it is and the circle is not told twice.
+   */
+  async sos(now = Date.now()): Promise<JourneyView | null> {
+    const state = await this.load();
+
+    if (!state || state.status === "ended") return null;
+
+    if (state.alert?.reason === "lost_contact") state.alert = null;
+    this.raiseAlert(state, "sos", now);
+    await this.save(state);
+
+    return travellerView(state);
+  }
+
+  /**
    * Answers a check-in. The safe code clears any check-in or alert and the
    * journey carries on; the duress PIN looks the same on the phone but
-   * alerts the circle. Too many wrong codes count as no answer.
+   * alerts the circle. Too many wrong codes count as no answer, and lock out
+   * every code for a while.
    */
   async answer(check: CodeCheck, now = Date.now()): Promise<CodeResult> {
     const state = await this.load();
 
     if (!state || state.status === "ended") return "not_found";
+
+    if (lockedOut(state, now)) return "too_many_tries";
 
     if (check === "wrong") return this.wrongCode(state, now);
 
@@ -227,6 +250,8 @@ export class JourneyObject extends DurableObject<Bindings> {
     const state = await this.load();
 
     if (!state || state.status === "ended") return "not_found";
+
+    if (lockedOut(state, now)) return "too_many_tries";
 
     if (check === "wrong") return this.wrongCode(state, now);
 
@@ -357,21 +382,28 @@ export class JourneyObject extends DurableObject<Bindings> {
       state.deadlineAt = null;
     }
 
-    state.outbox.push({ kind: "alert", reason });
+    // A phone that died at low battery gets a calm "phone probably died" message (PRD, "Lost contact").
+    state.outbox.push({
+      kind: "alert",
+      reason,
+      likelyBatteryDied: reason === "lost_contact" ? likelyBatteryDied(state.lastUpdate) : undefined,
+    });
   }
 
   private async wrongCode(state: JourneyState, now: number): Promise<CodeResult> {
-    if (state.wrongCodes >= CHECK_IN.wrongTries) return "too_many_tries";
-    state.wrongCodes += 1;
+    // An old run of wrong codes no longer counts once the lock time has passed without one.
+    const recent = now - (state.wrongCodeAt ?? 0) < JOURNEY_CODES.lockMs;
+    state.wrongCodes = (recent ? state.wrongCodes : 0) + 1;
+    state.wrongCodeAt = now;
 
     // Someone guessing at the code during a check-in is no answer.
-    if (state.wrongCodes >= CHECK_IN.wrongTries && state.status === "check_in") {
+    if (state.wrongCodes >= JOURNEY_CODES.wrongTries && state.status === "check_in") {
       this.raiseAlert(state, "no_answer", now);
     }
 
     await this.save(state);
 
-    return state.wrongCodes >= CHECK_IN.wrongTries ? "too_many_tries" : "wrong_code";
+    return state.wrongCodes >= JOURNEY_CODES.wrongTries ? "too_many_tries" : "wrong_code";
   }
 
   /** Sends what the alarm took from the outbox and mirrors the status to D1. */
@@ -417,6 +449,15 @@ export class JourneyObject extends DurableObject<Bindings> {
     if (next === null) await this.ctx.storage.deleteAlarm();
     else await this.ctx.storage.setAlarm(next);
   }
+}
+
+/**
+ * True while too many wrong codes were entered too recently. The caller
+ * refuses every code then, the safe code and the duress PIN included, so
+ * guessing can't stop at the first code that works.
+ */
+function lockedOut(state: JourneyState, now: number): boolean {
+  return state.wrongCodes >= JOURNEY_CODES.wrongTries && now - (state.wrongCodeAt ?? 0) < JOURNEY_CODES.lockMs;
 }
 
 function travellerView(state: JourneyState): JourneyView {

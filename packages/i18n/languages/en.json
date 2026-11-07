@@ -240,7 +240,9 @@
       "sos": "{{name}} just pressed SOS. See where they are at {{url}}. Message first, don't call yet.",
       "lost_contact": "Cage lost contact with {{name}} after they were due to arrive. Last location at {{url}}"
     },
-    "safeNow": "{{name}} confirmed they're safe with their safe code. Nothing more to do."
+    "lostContactBattery": "Cage lost contact with {{name}} after they were due to arrive. Their battery was nearly empty, so the phone probably died. Last location at {{url}}",
+    "safeNow": "{{name}} confirmed they're safe with their safe code. Nothing more to do.",
+    "codesReset": "{{name}} just reset their codes in Cage. If {{name}} hasn't mentioned it, give them a call to check on them."
   },
   "demo": {
     "band": "Demo server · No messages sent, no real calls",
@@ -333,7 +335,11 @@
   "onRoute": {
     "arrive": "arrival",
     "left": "{{minutes}} min left",
-    "sharing": "Your safety circle can see where you are"
+    "sharing": "Your safety circle can see where you are",
+    "sos": "Hold for SOS",
+    "sosHint": "Hold for 1 second to alert your safety circle at once",
+    "sosSending": "Alerting your safety circle",
+    "sosFailed": "Couldn't send the SOS. Check your connection and hold again."
   },
   "ask": {
     "autoAlert": "If time runs out, Cage tells your safety circle.",
@@ -346,7 +352,7 @@
     "left": "{{count}} seconds left",
     "forgot": "Forgot your code? Let the time run out and Cage will tell your circle.",
     "wrong": "Wrong code. Try again.",
-    "tooMany": "Too many wrong codes."
+    "tooMany": "Too many wrong codes. Try again in a few minutes."
   },
   "alerted": {
     "title": "Your circle has been told",
