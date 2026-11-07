@@ -241,7 +241,8 @@
       "lost_contact": "Cage mất kết nối với {{name}} sau giờ dự kiến đến nơi. Xem vị trí cuối tại {{url}}"
     },
     "lostContactBattery": "Cage mất kết nối với {{name}} sau giờ dự kiến đến nơi. Điện thoại có thể đã hết pin, vì lần cập nhật cuối chỉ còn rất ít. Xem vị trí cuối tại {{url}}",
-    "safeNow": "{{name}} đã báo an toàn bằng mã an toàn. Bạn không cần làm gì thêm."
+    "safeNow": "{{name}} đã báo an toàn bằng mã an toàn. Bạn không cần làm gì thêm.",
+    "codesReset": "{{name}} vừa đặt lại mã trên Cage. Nếu {{name}} chưa nhắc gì về việc này, hãy gọi hỏi thăm {{name}}."
   },
   "demo": {
     "band": "Máy chủ demo · Không gửi tin nhắn, không gọi thật",
