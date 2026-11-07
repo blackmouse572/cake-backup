@@ -21,6 +21,7 @@ import { CHECK_IN } from "./constants";
 import { messageSenderFor } from "./message-sender";
 import { logError } from "./middleware/request-log";
 import { loggingSender } from "./senders/dev.sender";
+import { circleLinksRepository } from "./repositories/circle-links.repository";
 import { journeysRepository } from "./repositories/journeys.repository";
 import { circleMessagesService, type CircleNotice } from "./services/circle-messages.service";
 import { sameString } from "./utils";
@@ -383,17 +384,21 @@ export class JourneyObject extends DurableObject<Bindings> {
         await journeysRepository(db).setStatus(state.id, state.status, state.status === "ended" ? new Date() : undefined);
       }
 
-      if (outbox.length === 0) return;
-      const sender = messageSenderFor(this.env, db);
+      if (outbox.length > 0) {
+        const sender = messageSenderFor(this.env, db);
 
-      // The demo sends nothing; it keeps each message for the dashboard's log instead.
-      const circle = circleMessagesService(
-        db,
-        this.env.DEMO_MODE === "on" ? loggingSender(sender, db, state.id) : sender,
-        this.env.CIRCLE_WEB_URL,
-      );
+        // The demo sends nothing; it keeps each message for the dashboard's log instead.
+        const circle = circleMessagesService(
+          db,
+          this.env.DEMO_MODE === "on" ? loggingSender(sender, db, state.id) : sender,
+          this.env.CIRCLE_WEB_URL,
+        );
 
-      for (const notice of outbox) await circle.send(journey, notice);
+        for (const notice of outbox) await circle.send(journey, notice);
+      }
+
+      // Links already stop working with the journey; this clears their rows. Last, because sending adds links.
+      if (state.status === "ended") await circleLinksRepository(db).deleteForJourney(state.id);
     } catch (err) {
       logError(err instanceof Error ? err : new Error(String(err)), "journey-object.alarm");
     }
