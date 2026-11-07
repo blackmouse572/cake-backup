@@ -30,7 +30,7 @@
       "workers_dev": true,
       "services": [{ "binding": "API", "service": "cage-api-demo" }]
     },
-    // Not deployed until #38 (production and store builds).
+    // Not deployed until #34 (production and store builds).
     "production": {
       "routes": [{ "pattern": "cage.vn", "custom_domain": true }],
       "services": [{ "binding": "API", "service": "cage-api-production" }]

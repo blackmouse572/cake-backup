@@ -95,7 +95,7 @@
         }
       ]
     },
-    // Not deployed until #38 (production and store builds).
+    // Not deployed until #34 (production and store builds).
     "production": {
       "routes": [{ "pattern": "api.cage.vn", "custom_domain": true }],
       "vars": {
