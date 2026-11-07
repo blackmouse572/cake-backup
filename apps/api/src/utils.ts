@@ -113,6 +113,10 @@ export function messageText(message: Message, locale: Locale): string {
         url: message.url,
       });
     case "alert":
+      if (message.reason === "lost_contact" && message.likelyBatteryDied) {
+        return t("messages.lostContactBattery", { name: message.name, url: message.url });
+      }
+
       return t(`messages.alert.${message.reason}`, { name: message.name, url: message.url });
     case "safe_now":
       return t("messages.safeNow", { name: message.name });

@@ -357,7 +357,12 @@ export class JourneyObject extends DurableObject<Bindings> {
       state.deadlineAt = null;
     }
 
-    state.outbox.push({ kind: "alert", reason });
+    // A phone that died at low battery gets a calm "phone probably died" message (PRD, "Lost contact").
+    state.outbox.push({
+      kind: "alert",
+      reason,
+      likelyBatteryDied: reason === "lost_contact" ? likelyBatteryDied(state.lastUpdate) : undefined,
+    });
   }
 
   private async wrongCode(state: JourneyState, now: number): Promise<CodeResult> {

@@ -242,6 +242,31 @@ async function flush(id: string) {
   await runDurableObjectAlarm(stubFor(id));
 }
 
+/** Pretends the phone went quiet long ago. */
+async function goQuiet(id: string) {
+  await runInDurableObject(stubFor(id), async (_obj: JourneyObject, state) => {
+    const s = await state.storage.get<{ lastHeardAt: number }>("state");
+    await state.storage.put("state", { ...s, lastHeardAt: Date.now() - TIMERS.staleUpdateMs - 1 });
+  });
+}
+
+/** The circle's message when the phone went quiet after its last update at this battery level (the test env logs messages). */
+async function lostContactMessage(battery: number): Promise<string> {
+  const { journey, journeyToken } = await startJourney();
+  expect((await sendUpdate(journey.id, journeyToken, reading(battery))).status).toBe(200);
+  await goQuiet(journey.id);
+  await passDeadline(journey.id);
+
+  // rowid is the order of insertion: the start message comes first, the alert last.
+  const row = await env.DB.prepare("select text from demo_messages where journey_id = ? order by rowid desc limit 1")
+    .bind(journey.id)
+    .first<{ text: string }>();
+
+  expect(row).not.toBeNull();
+
+  return row!.text;
+}
+
 const travellerView = async (id: string, cookie: string) =>
   readData(await api(`/journeys/${id}`, { headers: { cookie } }), JourneyView);
 
@@ -282,14 +307,36 @@ describe("journey timers", () => {
   it("alerts the circle with lost contact when the phone is silent at arrival plus buffer", async () => {
     const { journey } = await startJourney();
     const stub = stubFor(journey.id);
-    // Pretend the phone went quiet long ago.
-    await runInDurableObject(stub, async (_obj: JourneyObject, state) => {
-      const s = await state.storage.get<{ lastHeardAt: number }>("state");
-      await state.storage.put("state", { ...s, lastHeardAt: Date.now() - TIMERS.staleUpdateMs - 1 });
-    });
+    await goQuiet(journey.id);
     await passDeadline(journey.id);
     expect((await stub.view())?.status).toBe("lost_contact");
     expect((await stub.circleView())?.alert?.reason).toBe("lost_contact");
+  });
+
+  it("tells the circle the phone probably died when it went quiet at low battery", async () => {
+    const low = await lostContactMessage(0.03);
+    const normal = await lostContactMessage(0.64);
+
+    expect(low).toContain("có thể đã hết pin");
+    expect(normal).toContain("mất kết nối");
+    expect(normal).not.toContain("hết pin");
+  });
+
+  it("checks in instead of losing contact when the traveller turned lost contact off", async () => {
+    const cookie = await traveller();
+    const res = await post("/journeys", { ...start, lostContactEnabled: false }, { cookie });
+    const { journey } = await readData(res, StartedJourney);
+    await goQuiet(journey.id);
+    await passDeadline(journey.id);
+
+    expect((await stubFor(journey.id).view())?.status).toBe("check_in");
+    expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
+
+    const lost = await env.DB.prepare("select count(*) as n from demo_messages where journey_id = ? and text like ?")
+      .bind(journey.id, "%mất kết nối%")
+      .first<{ n: number }>();
+
+    expect(lost?.n).toBe(0);
   });
 
   it("checks in instead when updates are still arriving", async () => {
