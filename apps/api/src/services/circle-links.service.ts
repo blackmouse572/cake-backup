@@ -20,23 +20,30 @@ export function circleLinksService(db: Db, objects: DurableObjectNamespace<Journ
   const settings = travellerSettingsRepository(db);
   const circle = circleService(db);
 
+  /** The link's row, journey and journey object while the link works, else null. */
+  async function resolve(token: string) {
+    const link = await links.findByHash(await hashToken(token));
+
+    if (!link) return null;
+    const journey = await journeys.find(link.journeyId);
+
+    if (!journey || !(await circle.isMember(journey.userId, link.contactId))) return null;
+
+    return { link, journey, stub: objects.get(objects.idFromName(journey.id)) };
+  }
+
   return {
-    /** Also counts as the contact having seen an alert, for the 10-minute rule, and notes who opened it. */
+    /**
+     * The journey for the contact's page. Fetching it doesn't count as
+     * opening the link: messaging apps fetch links for their previews, and
+     * that must not stop the climb to the hotline (`markOpened`).
+     */
     async open(token: string, now = Date.now()): Promise<Omit<CircleJourneyView, "demo"> | null> {
-      const link = await links.findByHash(await hashToken(token));
+      const found = await resolve(token);
+      const view = found ? await found.stub.circleView(now) : null;
 
-      if (!link) return null;
-      const journey = await journeys.find(link.journeyId);
-
-      if (!journey || !(await circle.isMember(journey.userId, link.contactId))) return null;
-
-      const stub = objects.get(objects.idFromName(journey.id));
-      const view = await stub.circleView(now);
-
-      if (!view || view.status === "ended") return null;
-      await stub.markOpened(now);
-
-      if (!link.openedAt) await links.recordOpened(link.tokenHash, new Date(now));
+      if (!found || !view || view.status === "ended") return null;
+      const { journey } = found;
       const [account, row] = await Promise.all([users.find(journey.userId), settings.find(journey.userId)]);
       const phone = account?.phoneNumber ?? "";
 
@@ -47,6 +54,23 @@ export function circleLinksService(db: Db, objects: DurableObjectNamespace<Journ
         // Read on every open, so turning police on or off in settings shows at once.
         policeEnabled: row?.policeEnabled ?? false,
       };
+    },
+
+    /**
+     * The contact's page loaded in a browser. Counts as the circle having
+     * seen an alert, which stops the climb to the hotline, and notes who
+     * opened it and when. False when the link doesn't work.
+     */
+    async markOpened(token: string, now = Date.now()): Promise<boolean> {
+      const found = await resolve(token);
+      const view = found ? await found.stub.circleView(now) : null;
+
+      if (!found || !view || view.status === "ended") return false;
+      await found.stub.markOpened(now);
+
+      if (!found.link.openedAt) await links.recordOpened(found.link.tokenHash, new Date(now));
+
+      return true;
     },
   };
 }

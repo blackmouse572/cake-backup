@@ -36,6 +36,20 @@ export const getCircleJourney = createServerFn({ method: "GET" })
     return { journey, locale: viewerLocale(data.lang, journey?.locale), now: Date.now() };
   });
 
+/**
+ * The page loaded in the contact's browser (#18). Only this counts as the
+ * circle having opened the link: messaging apps fetch the page for previews
+ * but never run its scripts, and a preview must not stop the climb to the
+ * hotline.
+ */
+export const markCircleLinkOpened = createServerFn({ method: "POST" })
+  .validator(z.object({ token: z.string().min(1).max(100) }))
+  .handler(async ({ data }) => {
+    const { env } = await import("cloudflare:workers");
+    const api = createApiClient("https://api.internal", { fetch: env.API.fetch.bind(env.API) });
+    await api.links[":token"].opened.$post({ param: { token: data.token } });
+  });
+
 // --- Hackathon demo dashboard (only when the API has DEMO_MODE) -----------
 
 /**

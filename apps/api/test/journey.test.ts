@@ -8,7 +8,7 @@ import {
   type StartJourney,
 } from "@cage/shared";
 import { env, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { JourneyObject } from "../src/journey-object";
 import { JOURNEY_CODES } from "../src/constants";
 import { hashToken } from "../src/utils";
@@ -293,6 +293,9 @@ const openLink = (token: string) => api(`/links/${token}`);
 
 const circleView = async (token: string) => readData(await openLink(token), CircleJourneyView);
 
+/** What the circle's page does once it has loaded in a browser. Link previews never get this far. */
+const markOpened = (token: string) => api(`/links/${token}/opened`, { method: "POST" });
+
 const linkOpenedAt = async (token: string) =>
   (
     await env.DB.prepare("select opened_at as at from circle_links where token_hash = ?")
@@ -419,7 +422,7 @@ describe("the safety circle's links", () => {
     expect(await linkOpenedAt(second)).toBeNull();
 
     const before = Date.now();
-    await circleView(second);
+    expect((await markOpened(second)).status).toBe(204);
     expect(await linkOpenedAt(first)).toBeNull();
     expect(await linkOpenedAt(second)).toBeGreaterThanOrEqual(before);
   });
@@ -428,12 +431,12 @@ describe("the safety circle's links", () => {
     const { journey } = await startJourney();
     const token = await linkFor(journey.id);
 
-    await circleView(token);
+    await markOpened(token);
     const first = await linkOpenedAt(token);
     expect(first).toBeGreaterThan(0);
 
     await new Promise((resolve) => setTimeout(resolve, 20));
-    await circleView(token);
+    await markOpened(token);
     expect(await linkOpenedAt(token)).toBe(first);
   });
 
@@ -444,8 +447,26 @@ describe("the safety circle's links", () => {
     const later = Date.now() + TIMERS.circleOpenTimeoutMs;
     expect((await stubFor(journey.id).circleView(later))?.alert?.step).toBe("hotline");
 
-    await circleView(await linkFor(journey.id));
+    await markOpened(await linkFor(journey.id));
     expect((await stubFor(journey.id).circleView(later))?.alert?.step).toBe("circle");
+  });
+
+  it("doesn't count fetching the page, as a link preview does, as opening it", async () => {
+    const { journey } = await unanswered();
+    const token = await linkFor(journey.id);
+    await circleView(token);
+
+    expect(await linkOpenedAt(token)).toBeNull();
+    expect(await ladderAt(journey.id)).not.toBeNull();
+  });
+
+  it("answers marking an unknown or ended link as opened with 404", async () => {
+    expect((await markOpened("nope")).status).toBe(404);
+
+    const { journey, cookie } = await startJourney();
+    const token = await linkFor(journey.id);
+    expect((await enter(journey.id, "end", SAFE, cookie)).status).toBe(204);
+    expect((await markOpened(token)).status).toBe(404);
   });
 });
 
@@ -815,14 +836,15 @@ describe("the escalation ladder", () => {
     const { journey } = await unanswered();
     await passLadder(journey.id);
     const link = await linkFor(journey.id);
-    await circleView(link);
+    await markOpened(link);
 
     expect((await circleView(link)).alert?.step).toBe("hotline");
   });
 
   it("stops climbing once someone in the circle opens their link", async () => {
     const { journey } = await unanswered();
-    await circleView(await linkFor(journey.id));
+    expect(await ladderAt(journey.id)).not.toBeNull();
+    await markOpened(await linkFor(journey.id));
 
     expect(await ladderAt(journey.id)).toBeNull();
     expect(await alertSteps(journey.id)).toEqual([{ reason: "no_answer", step: "circle" }]);
@@ -847,8 +869,32 @@ describe("the escalation ladder", () => {
   it("keeps the ladder going after the duress PIN cancels the alert on the phone", async () => {
     const { journey, cookie } = await unanswered();
     expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
+    await flush(journey.id);
+    await passLadder(journey.id);
 
-    expect(await ladderAt(journey.id)).not.toBeNull();
+    expect(await alertSteps(journey.id)).toContainEqual({ reason: "duress", step: "hotline" });
+  });
+
+  it("stays at the hotline step when a stronger reason comes after the climb", async () => {
+    const { journey, cookie } = await unanswered();
+    await passLadder(journey.id);
+    expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
+    await flush(journey.id);
+
+    expect((await circleView(await linkFor(journey.id))).alert).toMatchObject({ reason: "duress", step: "hotline" });
+    expect(await ladderAt(journey.id)).toBeNull();
+  });
+
+  it("sends only the strongest alert when two are raised before the circle is told", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+
+    for (let i = 0; i < JOURNEY_CODES.wrongTries; i++) await enter(journey.id, "answer", "1111", cookie);
+    await passLock(journey.id);
+    expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
+    await flush(journey.id);
+
+    expect(await alertSteps(journey.id)).toEqual([{ reason: "duress", step: "circle" }]);
   });
 
   it("turns an alert into a duress alert when the duress PIN comes after it, and tells the circle", async () => {
@@ -898,8 +944,10 @@ describe("the duress PIN outside a journey's own screens", () => {
     const res = await send("/me/codes", "PUT", { safe: "1357", duress: "1368", current: DURESS }, { cookie });
     expect(res.status).toBe(204);
 
+    await vi.waitFor(async () => expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("duress"));
     expect((await travellerView(journey.id, cookie)).status).toBe("active");
-    expect((await circleView(await linkFor(journey.id))).alert?.reason).toBe("duress");
+    await flush(journey.id);
+    expect(await alertSteps(journey.id)).toEqual([{ reason: "duress", step: "circle" }]);
   });
 
   it("alerts the circle when it is entered to sign out mid-journey", async () => {
@@ -907,7 +955,9 @@ describe("the duress PIN outside a journey's own screens", () => {
     const res = await send("/me/sign-out", "POST", { code: DURESS }, { cookie });
     expect(res.status).toBe(204);
 
-    expect((await circleView(await linkFor(journey.id))).alert?.reason).toBe("duress");
+    await vi.waitFor(async () => expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("duress"));
+    await flush(journey.id);
+    expect(await alertSteps(journey.id)).toEqual([{ reason: "duress", step: "circle" }]);
   });
 
   it("leaves ended journeys alone", async () => {

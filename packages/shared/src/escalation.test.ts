@@ -15,7 +15,9 @@ describe("escalation ladder", () => {
   it("lets the duress PIN replace any other alert, and never the other way round", () => {
     expect(outranks("duress", "no_answer")).toBe(true);
     expect(outranks("duress", "lost_contact")).toBe(true);
-    expect(outranks("sos", "no_answer")).toBe(true);
+    expect(outranks("sos", "lost_contact")).toBe(true);
+    expect(outranks("sos", "no_answer")).toBe(false);
+    expect(outranks("no_answer", "sos")).toBe(false);
     expect(outranks("no_answer", "lost_contact")).toBe(true);
     expect(outranks("no_answer", "duress")).toBe(false);
     expect(outranks("lost_contact", "no_answer")).toBe(false);

@@ -9,7 +9,7 @@ import type { JourneyObject } from "../src/journey-object";
 import { api, readData, readError, send, signIn, type JsonBody } from "./helpers";
 
 const pepper = "test-pepper";
-const noJourneys = { hasOpen: async () => false, alertDuress: async () => {} };
+const noJourneys = { hasOpen: async () => false };
 
 describe("checkCode", () => {
   it("tells the safe code, the duress PIN and a wrong code apart", async () => {

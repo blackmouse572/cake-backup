@@ -222,15 +222,14 @@ export class JourneyObject extends DurableObject<Bindings> {
 
   /**
    * The traveller held SOS: alerts the circle now, with no code. Lost contact
-   * only ever told the circle calmly, so an SOS raises it; any other alert
-   * stays as it is and the circle is not told twice.
+   * only ever told the circle calmly, so an SOS outranks it; any other alert
+   * stays as it is and the circle is not told twice (`outranks`).
    */
   async sos(now = Date.now()): Promise<JourneyView | null> {
     const state = await this.load();
 
     if (!state || state.status === "ended") return null;
 
-    if (state.alert?.reason === "lost_contact") state.alert = null;
     this.raiseAlert(state, "sos", now);
     await this.save(state);
 
@@ -430,14 +429,18 @@ export class JourneyObject extends DurableObject<Bindings> {
    * Alerts the circle. Lost contact stays "lost contact" (circle only, PRD);
    * every other reason is an alert and starts the 10-minute climb to the
    * hotline. An alert already out is replaced only by a stronger reason (the
-   * duress PIN after a missed check-in), which starts over at the circle.
-   * The phone is told, except after the duress PIN.
+   * duress PIN after a missed check-in), which starts over at the circle
+   * unless the ladder already climbed. The phone is told, except after the
+   * duress PIN.
    */
   private raiseAlert(state: JourneyState, reason: AlertReason, now: number): void {
     if (state.alert && !outranks(reason, state.alert.reason)) return;
-    state.alert = { reason, raisedAt: now, openedAt: null, step: "circle" };
+    const climbed = state.alert?.step === "hotline";
+    state.alert = { reason, raisedAt: now, openedAt: null, step: climbed ? "hotline" : "circle" };
     state.status = reason === "lost_contact" ? "lost_contact" : "alerted";
-    state.ladderAt = reason === "lost_contact" ? null : now + TIMERS.circleOpenTimeoutMs;
+    state.ladderAt = reason === "lost_contact" || climbed ? null : now + TIMERS.circleOpenTimeoutMs;
+    // An alert not sent yet is replaced, so the circle hears only the strongest one.
+    state.outbox = state.outbox.filter((notice) => notice.kind !== "alert");
 
     if (reason !== "duress") {
       state.shownStatus = state.status;
@@ -448,6 +451,7 @@ export class JourneyObject extends DurableObject<Bindings> {
     state.outbox.push({
       kind: "alert",
       reason,
+      step: state.alert.step,
       likelyBatteryDied: reason === "lost_contact" ? likelyBatteryDied(state.lastUpdate) : undefined,
     });
   }

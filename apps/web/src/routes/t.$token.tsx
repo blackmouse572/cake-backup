@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { LiveJourney } from "../components/circle-view";
 import { LanguageLinks, LocaleProvider } from "../i18n";
-import { getCircleJourney } from "../server/functions";
+import { getCircleJourney, markCircleLinkOpened } from "../server/functions";
 
 /** How often the open page asks for the latest position. */
 const REFRESH_MS = 10_000;
@@ -25,7 +25,14 @@ export const Route = createFileRoute("/t/$token")({
 
 function JourneyPage() {
   const { journey, locale, now } = Route.useLoaderData();
+  const { token } = Route.useParams();
   const router = useRouter();
+  const live = journey !== null;
+
+  // Once per page load, in the browser only: link previews don't run scripts.
+  useEffect(() => {
+    if (live) void markCircleLinkOpened({ data: { token } }).catch(() => undefined);
+  }, [live, token]);
 
   useEffect(() => {
     if (!journey) return;

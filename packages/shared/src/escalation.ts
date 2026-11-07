@@ -26,8 +26,12 @@ export function ladderFor(reason: AlertReason, settings: EscalationSettings): Es
   return LADDER.filter((step) => step !== "police" || settings.policeEnabled);
 }
 
-/** Weakest first: silence, then a missed check-in, then SOS, then the duress PIN. */
-const STRENGTH: AlertReason[] = ["lost_contact", "no_answer", "sos", "duress"];
+/**
+ * How much an alert tells the circle: silence least, the duress PIN most. A
+ * missed check-in and SOS weigh the same: either way the circle is already
+ * alerted, so an SOS after a missed check-in doesn't tell them twice (#21).
+ */
+const STRENGTH: Record<AlertReason, number> = { lost_contact: 0, no_answer: 1, sos: 1, duress: 2 };
 
 /**
  * True when a new reason should replace the alert already out: the duress
@@ -35,7 +39,7 @@ const STRENGTH: AlertReason[] = ["lost_contact", "no_answer", "sos", "duress"];
  * same reason or a weaker one adds nothing.
  */
 export function outranks(next: AlertReason, current: AlertReason): boolean {
-  return STRENGTH.indexOf(next) > STRENGTH.indexOf(current);
+  return STRENGTH[next] > STRENGTH[current];
 }
 
 /** The step after `current`, or null at the top of the ladder. */
