@@ -35,6 +35,8 @@ export const ErrorCode = z.enum([
   "order_mismatch",
   // Journeys
   "no_codes",
+  // Circle links (POST /links/:token/reached)
+  "no_alert",
   // Place search and routes
   "maps_unavailable",
   "rate_limited",

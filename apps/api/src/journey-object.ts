@@ -14,6 +14,7 @@ import {
   type JourneyStatus,
   type JourneyView,
   type LocationUpdate,
+  type ReachedOutcome,
   type StartJourney,
 } from "@cage/shared";
 import { DurableObject } from "cloudflare:workers";
@@ -34,6 +35,8 @@ interface Alert {
   openedAt: number | null;
   /** "hotline" once the ladder climbed. Missing on alerts raised before the ladder ran on the server. */
   step?: "circle" | "hotline";
+  /** Contacts who said they reached the traveller since this alert (#22), one per contact. */
+  reached?: { contactId: string; name: string; at: number; outcome: ReachedOutcome }[];
 }
 
 interface JourneyState {
@@ -173,6 +176,7 @@ export class JourneyObject extends DurableObject<Bindings> {
             raisedAt: state.alert.raisedAt,
             // Once climbed, it stays; until the alarm runs, the clock already says where it is.
             step: state.alert.step === "hotline" ? "hotline" : alertStep(state.alert, now),
+            reached: (state.alert.reached ?? []).map(({ name, at, outcome }) => ({ name, at, outcome })),
           }
         : null,
     };
@@ -186,6 +190,23 @@ export class JourneyObject extends DurableObject<Bindings> {
     state.alert.openedAt = now;
     state.ladderAt = null;
     await this.save(state);
+  }
+
+  /**
+   * A contact says they reached the traveller (#22, screen 24a). It informs
+   * the rest of the circle and never cancels the alert or stops the ladder:
+   * only the traveller's safe code does. A contact saying it again replaces
+   * their note.
+   */
+  async markReached(contactId: string, name: string, outcome: ReachedOutcome, now = Date.now()): Promise<"ok" | "no_alert"> {
+    const state = await this.load();
+
+    if (!state?.alert || state.status === "ended") return "no_alert";
+    const others = (state.alert.reached ?? []).filter((r) => r.contactId !== contactId);
+    state.alert.reached = [...others, { contactId, name, at: now, outcome }];
+    await this.ctx.storage.put(STATE, state);
+
+    return "ok";
   }
 
   /**

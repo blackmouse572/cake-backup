@@ -970,3 +970,77 @@ describe("the duress PIN outside a journey's own screens", () => {
     expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
   });
 });
+
+const markReached = (token: string, outcome: string) => send(`/links/${token}/reached`, "POST", { outcome });
+
+describe("a contact who reached the traveller", () => {
+  it("shows every contact's page who reached the traveller, when, and what they said", async () => {
+    const { journey } = await unanswered();
+    const mine = await linkFor(journey.id, 0);
+    const theirs = await linkFor(journey.id, 1);
+    const before = Date.now();
+
+    expect((await markReached(mine, "ok")).status).toBe(204);
+
+    const view = await circleView(theirs);
+    expect(view.alert?.reached).toHaveLength(1);
+    expect(view.alert?.reached[0]).toMatchObject({ name: "Mẹ", outcome: "ok" });
+    expect(view.alert?.reached[0]?.at).toBeGreaterThanOrEqual(before);
+  });
+
+  it("never cancels the alert or stops the ladder", async () => {
+    const { journey, cookie } = await unanswered();
+    await markReached(await linkFor(journey.id), "ok");
+
+    expect((await travellerView(journey.id, cookie)).status).toBe("alerted");
+    expect((await stubFor(journey.id).circleView())?.status).toBe("alerted");
+    expect(await alertSteps(journey.id)).toEqual([{ reason: "no_answer", step: "circle" }]);
+  });
+
+  it("keeps one note per contact, the latest", async () => {
+    const { journey } = await unanswered();
+    const first = await linkFor(journey.id, 0);
+    const again = await linkFor(journey.id, 0);
+    await markReached(first, "ok");
+    await markReached(again, "needs_help");
+
+    const reached = (await circleView(await linkFor(journey.id, 1))).alert?.reached;
+    expect(reached).toHaveLength(1);
+    expect(reached?.[0]?.outcome).toBe("needs_help");
+  });
+
+  it("works on lost contact too", async () => {
+    const { journey } = await startJourney();
+    await goQuiet(journey.id);
+    await passDeadline(journey.id);
+    expect((await markReached(await linkFor(journey.id), "ok")).status).toBe(204);
+
+    expect((await stubFor(journey.id).circleView())?.status).toBe("lost_contact");
+  });
+
+  it("starts again with a new alert", async () => {
+    const { journey, cookie } = await unanswered();
+    await markReached(await linkFor(journey.id), "ok");
+    await enter(journey.id, "answer", DURESS, cookie);
+
+    expect((await circleView(await linkFor(journey.id, 1))).alert?.reached).toEqual([]);
+  });
+
+  it("refuses with no_alert when there is no alert to answer", async () => {
+    const { journey } = await startJourney();
+    const res = await markReached(await linkFor(journey.id), "ok");
+
+    expect(res.status).toBe(409);
+    expect(await readError(res)).toBe("no_alert");
+  });
+
+  it("answers an unknown, ended or revoked link with 404, and a bad outcome with 400", async () => {
+    expect((await markReached("nope", "ok")).status).toBe(404);
+
+    const { journey, cookie } = await unanswered();
+    const token = await linkFor(journey.id);
+    expect((await markReached(token, "fine")).status).toBe(400);
+    expect((await enter(journey.id, "end", SAFE, cookie)).status).toBe(204);
+    expect((await markReached(token, "ok")).status).toBe(404);
+  });
+});
