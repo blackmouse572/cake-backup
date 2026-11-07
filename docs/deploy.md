@@ -116,6 +116,8 @@ Start only after the GitHub credentials are revoked and the Cloudflare secrets a
    Workers Builds installs dependencies with Bun, since `bun.lock` and `packageManager` select it. It runs the D1 migrations before the API deploy, so new code never runs against an old schema. Keep migrations additive, because the old Worker keeps serving until the deploy finishes. Preview builds stay off because preview URLs are off.
 7. **EAS.** In the Expo project, add the `development` environment variables `EXPO_PUBLIC_CF_ACCESS_CLIENT_ID` and `EXPO_PUBLIC_CF_ACCESS_CLIENT_SECRET` from step 5. Then run `cd apps/mobile && eas build --profile development`.
 
+   **The disguised build** ("Ghi chú+", notes icon; PRD, "Disguise mode") has its own profile: `eas build --profile development-disguise`. Add the EAS variable `DISGUISE_APP_IDENTIFIER` (the bundle id and package name, for example `com.example.notes`) so it installs next to the ordinary build. Pick one that doesn't say "cage": the phone shows it in the app's info. Check the configuration without building: `APP_VARIANT=disguise bunx expo config --type public` in `apps/mobile` should print the name "Ghi chú+" and the notes icons.
+
 ## Secrets and variables
 
 | Name | Where | Used by |

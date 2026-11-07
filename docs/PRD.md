@@ -81,6 +81,8 @@ These patterns are from general knowledge and still need checking against source
 
 ### Disguise mode
 - Neutral app name and icon (for example a notes app), quiet notifications, a quick-hide gesture and a decoy screen, because a trafficker may check the phone.
+- MVP: a separate **disguised build**, called "Ghi chú+" with a notes icon from the moment it is installed (the `development-disguise` EAS profile, `APP_VARIANT=disguise`). iOS can't rename an app at runtime, so this is also how the name works there. The splash screen has no logo, the permission prompts don't say what the app is for, the app's own header and Settings don't name Cage, and sign-in code messages never name Cage.
+- Not yet: switching the icon and name while the app runs (Android `activity-alias`, an alternate icon on iOS), which needs a native module that hasn't been tried on a real phone; the quick-hide gesture; and the decoy screen. Until the decoy screen exists, words inside the app (for example "Cage sẽ hỏi bạn ngay") still say Cage once the app is open.
 
 ### Pre-trip check (post-MVP)
 - Before a long or cross-border trip: who arranged it, does the user hold their own passport, is the employer real. Cage flags common scam signs.

@@ -14,6 +14,13 @@ export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8787
 export const DEMO = process.env.EXPO_PUBLIC_DEMO === "on";
 
 /**
+ * The disguised build (EXPO_PUBLIC_DISGUISE=on, the `development-disguise`
+ * profile): called "Ghi chú+" on the home screen, and nothing inside the app
+ * calls itself Cage in its own name or settings.
+ */
+export const DISGUISE = process.env.EXPO_PUBLIC_DISGUISE === "on";
+
+/**
  * Staging sits behind Cloudflare Access (docs/deploy.md).
  * Development builds carry its service token (EAS environment variables, see
  * docs/deploy.md) and send it on every request. Unset everywhere else.
