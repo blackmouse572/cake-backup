@@ -25,7 +25,10 @@
   "call": {
     "accept": "Trả lời",
     "decline": "Từ chối",
-    "enterCode": "Nhập mã để tiếp tục"
+    "enterCode": "Nhập mã để tiếp tục",
+    "incoming": "Cuộc gọi đến",
+    "mobile": "Di động",
+    "hangUp": "Kết thúc cuộc gọi"
   },
   "circle": {
     "name": "Vòng an toàn",
