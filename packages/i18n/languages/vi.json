@@ -337,7 +337,7 @@
     "left": "Còn {{count}} giây",
     "forgot": "Quên mã? Cứ để hết giờ, Cage sẽ báo vòng an toàn.",
     "wrong": "Mã chưa đúng, thử lại.",
-    "tooMany": "Bạn đã nhập sai quá nhiều lần."
+    "tooMany": "Bạn đã nhập sai quá nhiều lần. Hãy thử lại sau ít phút."
   },
   "alerted": {
     "title": "Đã báo vòng an toàn",

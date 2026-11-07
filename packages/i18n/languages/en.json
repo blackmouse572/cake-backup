@@ -337,7 +337,7 @@
     "left": "{{count}} seconds left",
     "forgot": "Forgot your code? Let the time run out and Cage will tell your circle.",
     "wrong": "Wrong code. Try again.",
-    "tooMany": "Too many wrong codes."
+    "tooMany": "Too many wrong codes. Try again in a few minutes."
   },
   "alerted": {
     "title": "Your circle has been told",
