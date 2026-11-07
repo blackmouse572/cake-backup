@@ -1,16 +1,19 @@
 import { formatTime, isLocale, type Locale } from "@cage/i18n";
 import { CODE_LENGTH, TIMERS, type JourneyView, type Place } from "@cage/shared";
 import { space } from "@cage/ui-tokens";
-import { useEffect, useReducer, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useReducer, useState } from "react";
+import { StyleSheet, Text, Vibration, View } from "react-native";
 import { DEMO } from "../auth";
 import { useTranslation } from "../i18n";
 import { currentJourney, enterCode, fetchJourney, forgetJourney, sendSos, sendUpdate, startJourney } from "../services/journey.service";
+import { fetchMe } from "../services/auth.service";
 import { allowLocation, watchReadings } from "../services/places.service";
+import { dismissCalls, registerForCalls, useCallTaps, type CallPush } from "../services/push.service";
 import { saveSettings } from "../services/settings.service";
 import { color, text } from "../theme";
 import { BackBar, Caption, CodeDots, Icon, IconLine, Keypad, Note, PrimaryButton, Screen, Title } from "../ui";
-import { initialJourneyFlow, journeyReducer, type CodeEntry, type JourneyAction, type SosState } from "./journey.reducer";
+import { CallDots, CallKeypad, InCall, IncomingCall } from "./call-screen";
+import { initialJourneyFlow, journeyReducer, type CallScreen, type CodeEntry, type JourneyAction, type SosState } from "./journey.reducer";
 import { PlanView } from "./plan";
 import { SosButton } from "./sos-button";
 
@@ -26,6 +29,9 @@ const MINUTE_MS = 60_000;
 
 const SECOND_MS = 1_000;
 
+/** A short buzz when a code on the call is wrong: the call screen can't show words. */
+const WRONG_BUZZ_MS = 200;
+
 /**
  * A journey on the traveller's phone: plan (01), on route (02), "are you
  * safe?" (03), alert sent (04) and the code screens (26, 26b). The flow is
@@ -33,7 +39,7 @@ const SECOND_MS = 1_000;
  * Screen 01 (search, route, travel time) is `PlanView` in plan.tsx.
  */
 export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const locale: Locale = isLocale(i18n.language) ? i18n.language : "vi";
   const [state, dispatch] = useReducer(journeyReducer, initialJourneyFlow);
   const travelling = state.name === "travelling" ? state : null;
@@ -41,6 +47,28 @@ export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
   const token = travelling?.token ?? null;
   const submit = travelling?.code?.submit ?? null;
   const purpose = travelling?.code?.purpose ?? null;
+  const checkingIn = travelling?.journey.status === "check_in";
+  const [callerName, setCallerName] = useState("");
+
+  // Registers this phone for check-in calls, and learns who they look like they're from (screen 14).
+  useEffect(() => {
+    void registerForCalls({ ring: t("call.channelRing"), vibrate: t("call.channelVibrate") });
+    void fetchMe()
+      .then((me) => setCallerName(me.callerName))
+      .catch(() => {});
+  }, [t]);
+
+  // A check-in call opened from the lock screen rings in the app; the poll then catches up with the server.
+  const onCallTap = useCallback((call: CallPush) => dispatch({ type: "ring", call: call.call }), []);
+  useCallTaps(onCallTap);
+
+  // During a check-in, the clock decides when the second call rings on screen.
+  useEffect(() => {
+    if (!checkingIn) return;
+    const timer = setInterval(() => dispatch({ type: "clock", now: Date.now() }), SECOND_MS);
+
+    return () => clearInterval(timer);
+  }, [checkingIn]);
 
   // Picks up a journey that was running when the app closed.
   useEffect(() => {
@@ -94,11 +122,14 @@ export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
 
     void enterCode(id, purpose, submit).then(async (result) => {
       if (result === "ok" && purpose === "end") await forgetJourney();
+
+      if (result === "ok") void dismissCalls();
+      else if (result === "wrong_code") Vibration.vibrate(WRONG_BUZZ_MS);
       dispatch({ type: "codeResult", result });
     });
   }, [id, submit, purpose]);
 
-  async function start(destination: Place, travelMs: number) {
+  async function start(destination: Place, travelMs: number, route: string | null) {
     dispatch({ type: "start" });
 
     if (!(await allowLocation())) return dispatch({ type: "startFailed", problem: "need_location" });
@@ -109,6 +140,7 @@ export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
     const started = await startJourney({
       destination: { name: destination.name, lat: destination.lat, lng: destination.lng },
       expectedArrivalAt: Date.now() + travelMs,
+      route: route || undefined,
       lostContactEnabled: true,
       locale,
     });
@@ -136,10 +168,47 @@ export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
     case "ended":
       return <EndedView onNewTrip={() => dispatch({ type: "newTrip" })} />;
     case "travelling":
+      if (state.call) {
+        return <CallView call={state.call} code={state.code} callerName={callerName || t("call.defaultCaller")} dispatch={dispatch} />;
+      }
+
       if (state.code) return <CodeView code={state.code} journey={state.journey} dispatch={dispatch} />;
 
       return <TravellingView journey={state.journey} locale={locale} sos={state.sos} onSos={raiseSos} dispatch={dispatch} />;
   }
+}
+
+/**
+ * The check-in call (12 ringing, 13 on the call). It looks like the phone's
+ * own call screen; only the safe code (or the duress PIN, which looks the
+ * same) ends the check-in. Declining or hanging up counts as no answer.
+ */
+function CallView({
+  call,
+  code,
+  callerName,
+  dispatch,
+}: {
+  call: CallScreen;
+  code: CodeEntry | null;
+  callerName: string;
+  dispatch: (action: JourneyAction) => void;
+}) {
+  function hangUp() {
+    void dismissCalls();
+    dispatch({ type: "hangUp" });
+  }
+
+  if (call.phase === "ringing") {
+    return <IncomingCall callerName={callerName} onAnswer={() => dispatch({ type: "answerCall", now: Date.now() })} onDecline={hangUp} />;
+  }
+
+  return (
+    <InCall callerName={callerName} startedAt={call.startedAt} onHangUp={hangUp}>
+      <CallDots length={CODE_LENGTH} filled={code?.entry.length ?? 0} />
+      <CallKeypad onDigit={(digit) => dispatch({ type: "digit", digit })} />
+    </InCall>
+  );
 }
 
 /** The current time, ticking every second while `on`. */
@@ -182,6 +251,7 @@ function TravellingView({
     return (
       <Screen footer={<PrimaryButton label={t("checkIn.imSafe")} onPress={() => dispatch({ type: "openCode", purpose: "answer" })} />}>
         <Title style={{ marginTop: space[7] }}>{t("checkIn.question")}</Title>
+        {journey.checkIn ? <Caption>{t(`checkIn.why.${journey.checkIn.reason}`)}</Caption> : null}
         <View style={styles.countdown}>
           <Text style={styles.seconds}>{seconds}</Text>
           <Text style={[text("title"), { color: color.fgSecondary }]}>{t("ask.seconds")}</Text>

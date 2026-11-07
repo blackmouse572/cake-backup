@@ -116,8 +116,30 @@ export const travellerSettings = sqliteTable("traveller_settings", {
   /** Wrong safe codes in a row when changing codes, and when the last one was. */
   codeFailures: integer("code_failures").notNull().default(0),
   codeFailedAt: integer("code_failed_at", { mode: "timestamp_ms" }),
+  /** Who the check-in call looks like it is from (screen 14). Null means the default for the language ("Mẹ"). */
+  callerName: text("caller_name"),
+  /** The check-in call vibrates without ringing. */
+  callVibrateOnly: integer("call_vibrate_only", { mode: "boolean" }).notNull().default(false),
   createdAt: createdAt(),
 });
+
+/**
+ * The traveller's phones, by Expo push token, so the server can ring a
+ * check-in call while the app is closed (#20). Deleted on sign-out, and
+ * when Expo says the token no longer works.
+ */
+export const pushTokens = sqliteTable(
+  "push_tokens",
+  {
+    token: text("token").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    platform: text("platform", { enum: ["ios", "android"] }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("push_tokens_user_idx").on(t.userId)],
+);
 
 /**
  * Trusted contacts, alerted in `position` order. Never listed by name in

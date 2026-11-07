@@ -30,6 +30,13 @@ export interface Bindings {
    * dashboard may show and drive. Unset, every trip on the demo server.
    */
   DEMO_ACCOUNTS?: string;
+  /**
+   * Who rings the traveller's phone for a check-in call: "expo", "console"
+   * (local) or "none". Unset is "none". See push-sender.ts.
+   */
+  PUSH_SENDER?: string;
+  /** Secret, optional. Only if the EAS project turned on Expo's enhanced push security. */
+  EXPO_ACCESS_TOKEN?: string;
   /** Who answers place search and routes: "goong", or "fixed" (a few made-up places, for local dev and tests). See maps-provider.ts. */
   MAPS_PROVIDER: string;
   /** Secret, when MAPS_PROVIDER is "goong". Goong's REST API key (account.goong.io). */

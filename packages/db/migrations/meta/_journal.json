@@ -57,6 +57,13 @@
       "when": 1794043608098,
       "tag": "0007_circle_link_opened",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794047453428,
+      "tag": "0008_check_in_call",
+      "breakpoints": true
     }
   ]
 }

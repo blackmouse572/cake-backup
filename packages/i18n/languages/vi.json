@@ -20,7 +20,12 @@
     "question": "Bạn có ổn không?",
     "imSafe": "Tôi an toàn",
     "alertNow": "Báo ngay",
-    "noAnswer": "Không trả lời, Cage sẽ báo vòng an toàn."
+    "noAnswer": "Không trả lời, Cage sẽ báo vòng an toàn.",
+    "why": {
+      "off_route": "Bạn đang đi khác tuyến.",
+      "stopped": "Bạn dừng ở một chỗ khá lâu.",
+      "late": "Đã quá giờ bạn định đến."
+    }
   },
   "call": {
     "accept": "Trả lời",
@@ -28,7 +33,16 @@
     "enterCode": "Nhập mã để tiếp tục",
     "incoming": "Cuộc gọi đến",
     "mobile": "Di động",
-    "hangUp": "Kết thúc cuộc gọi"
+    "hangUp": "Kết thúc cuộc gọi",
+    "defaultCaller": "Mẹ",
+    "channelRing": "Cuộc gọi",
+    "channelVibrate": "Cuộc gọi, chỉ rung",
+    "presets": {
+      "mom": "Mẹ",
+      "sister": "Chị Hai",
+      "work": "Công ty",
+      "delivery": "Shipper"
+    }
   },
   "circle": {
     "name": "Vòng an toàn",
@@ -202,6 +216,15 @@
     },
     "people": "{{count}} người",
     "checkInCall": "Cuộc gọi kiểm tra",
+    "call": {
+      "caller": "Tên người gọi",
+      "custom": "Tự đặt",
+      "customPlaceholder": "Ví dụ: Bố, Anh Tuấn",
+      "ring": "Kiểu báo",
+      "ringOn": "Chuông",
+      "vibrateOnly": "Chỉ rung",
+      "howItWorks": "Nghe máy rồi nhập mã. Lỡ hai cuộc liền, Cage báo vòng an toàn."
+    },
     "codes": "Mã an toàn và mã khẩn cấp",
     "police": "Báo công an",
     "policeWhy": "Mặc định tắt, vì với người không có giấy tờ, công an có thể là rủi ro. Chỉ bật khi bạn muốn.",

@@ -11,7 +11,7 @@ export function travellerSettingsRepository(db: Db) {
     },
 
     /** Saves what changed. The row may not exist yet: it is created when the codes are set or the first setting is saved. */
-    async save(userId: string, settings: Partial<Pick<TravellerSettings, "locale" | "policeEnabled">>): Promise<void> {
+    async save(userId: string, settings: Partial<Pick<TravellerSettings, "locale" | "policeEnabled" | "callerName" | "callVibrateOnly">>): Promise<void> {
       await db
         .insert(travellerSettings)
         .values({ userId, ...settings })

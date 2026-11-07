@@ -42,6 +42,9 @@ These patterns are from general knowledge and still need checking against source
 - Answering is not enough. The user confirms with the safe code, because someone else may answer.
 - One missed call is not "in danger". Cage retries after 1 to 2 minutes, then escalates.
 - Later option: a real call over a voice API (for example Stringee or Twilio) when there is no data.
+- Timing (#20): the server rings the moment it asks, and again `TIMERS.checkInRetryMs` (2 minutes) later; each call rings for a minute. The alert goes out when the second call stops ringing, 3 minutes after the ask. With the app open, the first call shows as screen 03 instead and the second rings on screen. Declining or hanging up without the code counts as no answer.
+- How it rings today: a high-priority push through Expo (time-sensitive on iOS, a max-importance channel on Android), titled with the caller name and "Cuộc gọi đến". Opening it shows the call screen (12, 13). A true full-screen ringing call (CallKit with VoIP push, Android full-screen intent) needs a native module and is the next step.
+- Triggers (#19), run by the server on every location update: off the planned route by more than 300 m on every update for 2 minutes (readings less accurate than 150 m don't count), standing within 75 m of one spot for 12 minutes away from the destination, or still travelling past the arrival time plus the buffer. After "I'm fine" to an off-route check-in, the server stops watching that route for the rest of the trip.
 
 ### Duress PIN
 - Works in the app and on the check-in call.
