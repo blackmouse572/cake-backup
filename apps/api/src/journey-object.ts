@@ -439,8 +439,15 @@ export class JourneyObject extends DurableObject<Bindings> {
     state.alert = { reason, raisedAt: now, openedAt: null, step: climbed ? "hotline" : "circle" };
     state.status = reason === "lost_contact" ? "lost_contact" : "alerted";
     state.ladderAt = reason === "lost_contact" || climbed ? null : now + TIMERS.circleOpenTimeoutMs;
-    // An alert not sent yet is replaced, so the circle hears only the strongest one.
-    state.outbox = state.outbox.filter((notice) => notice.kind !== "alert");
+    // An alert not sent yet is replaced, so the circle hears only the strongest one, and never "safe now" for it.
+    const unsent = state.outbox.findIndex((notice) => notice.kind === "alert");
+
+    if (unsent !== -1) {
+      state.outbox = [
+        ...state.outbox.slice(0, unsent),
+        ...state.outbox.slice(unsent).filter((notice) => notice.kind !== "alert" && notice.kind !== "safe_now"),
+      ];
+    }
 
     if (reason !== "duress") {
       state.shownStatus = state.status;

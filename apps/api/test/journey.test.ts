@@ -965,6 +965,8 @@ describe("the duress PIN outside a journey's own screens", () => {
     expect((await enter(journey.id, "end", SAFE, cookie)).status).toBe(204);
     expect((await send("/me/codes", "PUT", { safe: "1357", duress: "1368", current: DURESS }, { cookie })).status).toBe(204);
 
+    // The alert runs after the answer; give it the time it takes for an open journey (see the tests above).
+    await new Promise((resolve) => setTimeout(resolve, 300));
     expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
   });
 });
