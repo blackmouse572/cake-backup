@@ -1034,7 +1034,30 @@ describe("a contact who reached the traveller", () => {
     expect(await readError(res)).toBe("no_alert");
   });
 
-  it("answers an unknown, ended or revoked link with 404, and a bad outcome with 400", async () => {
+  it("refuses with no_alert after the duress PIN, where contacting the traveller is discouraged", async () => {
+    const { journey, cookie } = await unanswered();
+    await enter(journey.id, "answer", DURESS, cookie);
+    const res = await markReached(await linkFor(journey.id), "ok");
+
+    expect(res.status).toBe(409);
+    expect(await readError(res)).toBe("no_alert");
+  });
+
+  it("answers the link of a contact removed from the circle with 404", async () => {
+    const { journey, cookie } = await unanswered();
+    const token = await linkFor(journey.id);
+
+    const contact = await env.DB.prepare(
+      "select c.id from circle_contacts c join journeys j on j.user_id = c.user_id where j.id = ? order by c.position",
+    )
+      .bind(journey.id)
+      .first<{ id: string }>();
+
+    await api(`/circle/${contact!.id}`, { method: "DELETE", headers: { cookie } });
+    expect((await markReached(token, "ok")).status).toBe(404);
+  });
+
+  it("answers an unknown or ended link with 404, and a bad outcome with 400", async () => {
     expect((await markReached("nope", "ok")).status).toBe(404);
 
     const { journey, cookie } = await unanswered();

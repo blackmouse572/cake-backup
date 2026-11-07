@@ -106,6 +106,7 @@
     "reachedHelp": "{{name}} still needs help",
     "reachedNoteOk": "{{contact}} reached {{name}} at {{time}}: {{name}} is fine, on the way.",
     "reachedNoteHelp": "{{contact}} reached {{name}} at {{time}}: {{name}} still needs help.",
+    "reachedEnded": "This alert has already ended.",
     "reachedError": "Couldn't send. Check your connection and try again.",
     "duressBody": "On {{name}}'s phone everything looks normal. Someone may be next to {{name}}, watching.",
     "messageFirst": "Message first, don't call yet.",

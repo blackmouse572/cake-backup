@@ -45,11 +45,12 @@ function JourneyPage() {
           locale={locale}
           now={now}
           onReached={async (outcome) => {
-            const { ok } = await markCircleReached({ data: { token, outcome } });
+            const { result } = await markCircleReached({ data: { token, outcome } });
 
-            if (ok) await router.invalidate();
+            // Show the new note (or the ended alert) now; a failed refresh is not a failed answer.
+            if (result !== "error") void router.invalidate();
 
-            return ok;
+            return result;
           }}
         />
       ) : (

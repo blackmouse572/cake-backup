@@ -1,6 +1,6 @@
 import { formatTime, LOCALE_NAMES, LOCALES, type Locale } from "@cage/i18n";
 import { HOTLINES, TIMERS, type CircleJourneyView, type ReachedOutcome } from "@cage/shared";
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { JourneyMap } from "./journey-map";
 
@@ -13,7 +13,7 @@ const DemoContext = createContext(false);
  * Sends "I reached them" for this contact's link (#22). Missing on the demo
  * dashboard, which has no link, so the button doesn't show there.
  */
-export type OnReached = (outcome: ReachedOutcome) => Promise<boolean>;
+export type OnReached = (outcome: ReachedOutcome) => Promise<"ok" | "no_alert" | "error">;
 
 const ReachedContext = createContext<OnReached | null>(null);
 
@@ -288,16 +288,17 @@ function ReachedNotes({ journey, locale }: { journey: CircleJourneyView; locale:
 }
 
 /**
- * "Tôi đã liên lạc được Lan" and its overlay (screen 24a). The answer is
- * shown to the whole circle and never cancels the alert: only the
+ * "Tôi đã liên lạc được Lan" and its overlay (screen 24a), a native modal
+ * dialog so focus, Escape and the inert page behind come for free. The
+ * answer is shown to the whole circle and never cancels the alert: only the
  * traveller's safe code does.
  */
 function Reached({ journey, locale, now }: ViewProps) {
   const { t } = useTranslation();
   const onReached = useContext(ReachedContext);
-  const [open, setOpen] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [problem, setProblem] = useState<"no_alert" | "error" | null>(null);
   const name = journey.travellerName;
 
   if (!onReached) return null;
@@ -305,55 +306,66 @@ function Reached({ journey, locale, now }: ViewProps) {
   async function choose(outcome: ReachedOutcome) {
     if (!onReached) return;
     setBusy(true);
-    setFailed(false);
-    const ok = await onReached(outcome).catch(() => false);
+    setProblem(null);
+    const result = await onReached(outcome).catch(() => "error" as const);
     setBusy(false);
 
-    if (ok) setOpen(false);
-    else setFailed(true);
+    if (result === "ok") dialog.current?.close();
+    else setProblem(result);
   }
 
   return (
     <>
-      <button type="button" className="cd-btn cd-btn--ghost cd-btn--md" onClick={() => setOpen(true)}>
+      <button type="button" className="cd-btn cd-btn--ghost cd-btn--md" onClick={() => dialog.current?.showModal()}>
         <span className="cd-icon">how_to_reg</span>
         {t("web.reachedButton", { name })}
       </button>
-      {open ? (
-        <>
-          <div className="scrim" onClick={() => setOpen(false)} />
-          <section className="sheet sheet--over" role="dialog" aria-modal="true" aria-labelledby="reached-title">
-            <span className="grab" />
-            <h2 className="hp" id="reached-title">
-              {t("web.reachedTitle", { name })}
-            </h2>
-            <p className="cap">{t("web.reachedBody", { name, time: formatTime(now, locale) })}</p>
-            <Note icon="lock" rest={t("web.reachedLock", { name })} />
-            {failed ? <Note icon="error" rest={t("web.reachedError")} danger /> : null}
-            <button
-              type="button"
-              className="cd-btn cd-btn--lg cd-btn--primary cd-btn--full"
-              disabled={busy}
-              onClick={() => void choose("ok")}
-            >
-              <span className="cd-icon">how_to_reg</span>
-              {t("web.reachedOk", { name })}
-            </button>
-            <button
-              type="button"
-              className="cd-btn cd-btn--lg cd-btn--secondary"
-              disabled={busy}
-              onClick={() => void choose("needs_help")}
-            >
-              <span className="cd-icon">sos</span>
-              {t("web.reachedHelp", { name })}
-            </button>
-            <button type="button" className="cd-btn cd-btn--ghost cd-btn--md" onClick={() => setOpen(false)}>
-              {t("common.cancel")}
-            </button>
-          </section>
-        </>
-      ) : null}
+      <dialog
+        ref={dialog}
+        className="sheet sheet--over"
+        aria-labelledby="reached-title"
+        onClose={() => setProblem(null)}
+        // Escape and a tap outside close it, except while the answer is on its way.
+        onCancel={(e) => {
+          if (busy) e.preventDefault();
+        }}
+        onClick={(e) => {
+          // The backdrop belongs to the dialog element, so only a tap outside its box counts as outside.
+          const box = e.currentTarget.getBoundingClientRect();
+          const outside = e.clientY < box.top || e.clientY > box.bottom || e.clientX < box.left || e.clientX > box.right;
+
+          if (outside && !busy) e.currentTarget.close();
+        }}
+      >
+        <span className="grab" />
+        <h2 className="hp" id="reached-title">
+          {t("web.reachedTitle", { name })}
+        </h2>
+        <p className="cap">{t("web.reachedBody", { name, time: formatTime(now, locale) })}</p>
+        <Note icon="lock" rest={t("web.reachedLock", { name })} />
+        {problem ? <Note icon="error" rest={t(problem === "no_alert" ? "web.reachedEnded" : "web.reachedError")} danger /> : null}
+        <button
+          type="button"
+          className="cd-btn cd-btn--lg cd-btn--primary cd-btn--full"
+          disabled={busy}
+          onClick={() => void choose("ok")}
+        >
+          <span className="cd-icon">how_to_reg</span>
+          {t("web.reachedOk", { name })}
+        </button>
+        <button
+          type="button"
+          className="cd-btn cd-btn--lg cd-btn--secondary cd-btn--full"
+          disabled={busy}
+          onClick={() => void choose("needs_help")}
+        >
+          <span className="cd-icon">sos</span>
+          {t("web.reachedHelp", { name })}
+        </button>
+        <button type="button" className="cd-btn cd-btn--ghost cd-btn--md" disabled={busy} onClick={() => dialog.current?.close()}>
+          {t("common.cancel")}
+        </button>
+      </dialog>
     </>
   );
 }

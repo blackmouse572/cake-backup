@@ -204,12 +204,13 @@ export class JourneyObject extends DurableObject<Bindings> {
    * A contact says they reached the traveller (#22, screen 24a). It informs
    * the rest of the circle and never cancels the alert or stops the ladder:
    * only the traveller's safe code does. A contact saying it again replaces
-   * their note.
+   * their note. Not after the duress PIN, where contacting the traveller is
+   * discouraged (screen 24b offers no such button).
    */
   async markReached(contactId: string, name: string, outcome: ReachedOutcome, now = Date.now()): Promise<"ok" | "no_alert"> {
     const state = await this.load();
 
-    if (!state?.alert || state.status === "ended") return "no_alert";
+    if (!state?.alert || state.status === "ended" || state.alert.reason === "duress") return "no_alert";
     const others = (state.alert.reached ?? []).filter((r) => r.contactId !== contactId);
     state.alert.reached = [...others, { contactId, name, at: now, outcome }];
     await this.ctx.storage.put(STATE, state);

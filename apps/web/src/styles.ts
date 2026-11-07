@@ -41,8 +41,9 @@ body{background:var(--bg-primary);font-family:var(--font-sans);color:var(--fg-pr
 .lng{position:fixed;top:16px;left:16px;height:32px;padding:0 12px 0 10px;border-radius:999px;background:var(--surface);box-shadow:var(--shadow-raised);display:flex;align-items:center;gap:6px;font:500 13px/16px var(--font-sans);color:var(--fg-primary);text-decoration:none;z-index:4}
 .lng .cd-icon{font-size:18px}
 .sheet{position:fixed;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;max-height:calc(100dvh - 120px);overflow-y:auto;background:var(--surface);border-radius:var(--radius-lg) var(--radius-lg) 0 0;box-shadow:var(--shadow-raised);padding:26px 20px 30px;display:flex;flex-direction:column;gap:12px;z-index:3}
-.scrim{position:fixed;inset:0;background:rgba(17,17,17,.4);z-index:5}
-.sheet--over{z-index:6;max-height:none}
+dialog.sheet--over{inset:auto 0 0 0;width:100%;max-width:480px;max-height:calc(100dvh - 24px);border:0;color:var(--fg-primary)}
+dialog.sheet--over:not([open]){display:none}
+dialog.sheet--over::backdrop{background:rgba(17,17,17,.4)}
 .grab{position:absolute;top:10px;left:50%;width:36px;height:5px;margin-left:-18px;border-radius:999px;background:var(--divider)}
 .note{display:flex;gap:10px;align-items:flex-start;font:400 15px/20px var(--font-sans);color:var(--fg-secondary);padding:12px 14px;border-radius:var(--radius-md);background:var(--surface-sunken)}
 .note b{color:var(--fg-primary);font-weight:500}

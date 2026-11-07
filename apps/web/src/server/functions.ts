@@ -51,7 +51,7 @@ export const markCircleLinkOpened = createServerFn({ method: "POST" })
     await api.links[":token"].opened.$post({ param: { token: data.token } });
   });
 
-/** The contact reached the traveller and says how they are (#22, screen 24a). True when the API took it. */
+/** The contact reached the traveller and says how they are (#22, screen 24a). "no_alert" when the alert already ended. */
 export const markCircleReached = createServerFn({ method: "POST" })
   .validator(z.object({ token: z.string().min(1).max(100), outcome: ReachedOutcome }))
   .handler(async ({ data }) => {
@@ -59,7 +59,7 @@ export const markCircleReached = createServerFn({ method: "POST" })
     const api = createApiClient("https://api.internal", { fetch: env.API.fetch.bind(env.API) });
     const res = await api.links[":token"].reached.$post({ param: { token: data.token }, json: { outcome: data.outcome } });
 
-    return { ok: res.ok };
+    return { result: res.ok ? ("ok" as const) : res.status === 409 ? ("no_alert" as const) : ("error" as const) };
   });
 
 // --- Hackathon demo dashboard (only when the API has DEMO_MODE) -----------
