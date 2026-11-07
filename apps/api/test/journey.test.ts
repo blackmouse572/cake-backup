@@ -400,6 +400,26 @@ describe("ending a journey", () => {
     expect(row?.ended_at).not.toBeNull();
   });
 
+  it("drops the circle's links once the safe code ends the journey", async () => {
+    const { journey, cookie } = await startJourney();
+    await flush(journey.id);
+    expect(await countRows("select count(*) as n from circle_links where journey_id = ?", journey.id)).toBe(2);
+
+    expect((await enter(journey.id, "end", SAFE, cookie)).status).toBe(204);
+    await flush(journey.id);
+    expect(await countRows("select count(*) as n from circle_links where journey_id = ?", journey.id)).toBe(0);
+  });
+
+  it("keeps the circle's links after the duress PIN, so they can still follow the alert", async () => {
+    const { journey, cookie } = await startJourney();
+    await flush(journey.id);
+    expect((await enter(journey.id, "end", DURESS, cookie)).status).toBe(204);
+    await flush(journey.id);
+    expect(
+      await countRows("select count(*) as n from circle_links where journey_id = ?", journey.id),
+    ).toBeGreaterThanOrEqual(2);
+  });
+
   it("refuses a wrong code", async () => {
     const { journey, cookie } = await startJourney();
     const res = await enter(journey.id, "end", "1111", cookie);
