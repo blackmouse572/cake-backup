@@ -11,7 +11,8 @@ import { CircleScreen } from "./src/screens/circle";
 import { JourneyFlow } from "./src/screens/journey";
 import { SetCodesFlow } from "./src/screens/codes";
 import { ResetCodesFlow } from "./src/screens/reset-codes";
-import { fetchMe, hasStoredSession, type CodeChannel } from "./src/services/auth.service";
+import { SettingsFlow } from "./src/screens/settings";
+import { changeCodes, fetchMe, hasStoredSession, type CodeChannel } from "./src/services/auth.service";
 import { CodeScreen, PhoneScreen, WelcomeBackScreen } from "./src/screens/sign-in";
 import { color } from "./src/theme";
 import { ICON_FONT } from "./src/ui";
@@ -36,12 +37,14 @@ type Step =
   | { name: "codes" }
   | { name: "resetCodes"; phoneNumber: string; fresh: boolean; back: Step }
   | { name: "home" }
-  | { name: "circleSettings" };
+  | { name: "settings" }
+  | { name: "circleSettings" }
+  | { name: "changeCodes" };
 
 /**
  * Sign-in, the safety circle and code setup (screens 08a, 08b, 08c, 09, 10,
- * 10b), and the forgot-code path from 08c (20a joins it with Settings, #31).
- * The welcome and permission steps (08, 11) join with #29.
+ * 10b), the forgot-code path from 08c, and Settings (20) with the screens it
+ * opens (05, 20a, 20b). The welcome and permission steps (08, 11) join with #29.
  *
  * Once a session is stored the app never opens on a sign-in screen, even
  * offline (ADR 0002), so a failed lookup falls through to home.
@@ -59,6 +62,9 @@ async function stepAfterSignIn(isReturn: boolean): Promise<Step> {
     return { name: "home" };
   }
 }
+
+/** Changing the codes (20a): the current safe code, then the two new ones. */
+const CHANGE_CODES_STEPS = { current: 1, safe: 2, duress: 3, total: 3 };
 
 function Root() {
   const [step, setStep] = useState<Step>({ name: "loading" });
@@ -114,9 +120,28 @@ function Root() {
     case "codes":
       return <SetCodesFlow onBack={() => setStep({ name: "circle", hasCodes: false })} onDone={() => setStep({ name: "home" })} />;
     case "home":
-      return <JourneyFlow onCircle={() => setStep({ name: "circleSettings" })} />;
+      return <JourneyFlow onSettings={() => setStep({ name: "settings" })} />;
+    case "settings":
+      return (
+        <SettingsFlow
+          onBack={() => setStep({ name: "home" })}
+          onCircle={() => setStep({ name: "circleSettings" })}
+          onChangeCodes={() => setStep({ name: "changeCodes" })}
+          onSignedOut={() => setStep({ name: "phone" })}
+        />
+      );
     case "circleSettings":
-      return <CircleScreen mode="settings" onBack={() => setStep({ name: "home" })} />;
+      return <CircleScreen mode="settings" onBack={() => setStep({ name: "settings" })} />;
+    case "changeCodes":
+      return (
+        <SetCodesFlow
+          change
+          save={changeCodes}
+          steps={CHANGE_CODES_STEPS}
+          onBack={() => setStep({ name: "settings" })}
+          onDone={() => setStep({ name: "settings" })}
+        />
+      );
   }
 }
 

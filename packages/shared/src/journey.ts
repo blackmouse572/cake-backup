@@ -17,8 +17,9 @@ export const StartJourney = z.object({
   /** Lost contact can be turned on per trip, for risky journeys only. */
   lostContactEnabled: z.boolean().default(true),
   /**
-   * The traveller's app language. Their SMS, check-in call and the circle's
-   * web view default to it.
+   * Ignored by the server: the language saved in the traveller's settings
+   * (`PUT /me/settings`) decides the language of their SMS, check-in call and
+   * the circle's web view. Older apps still send it.
    */
   locale: z.enum(["vi", "en"]).default("vi"),
 });
