@@ -1,11 +1,12 @@
 import { createDb } from "@cage/db";
-import { failure, ResetCodes, SetCodes, SetName, success } from "@cage/shared";
+import { failure, ResetCodes, SetCodes, SetName, SetSettings, SignOut, success } from "@cage/shared";
 import { Hono } from "hono";
 import { requireSession } from "../middleware/require-session";
 import { validate } from "../middleware/validate";
 import { codesService } from "../services/codes.service";
 import { journeysService } from "../services/journeys.service";
 import { meService } from "../services/me.service";
+import { sessionsService } from "../services/sessions.service";
 import type { AuthedEnv } from "../types";
 
 const codes = (env: AuthedEnv["Bindings"]) => {
@@ -23,6 +24,36 @@ export const meController = new Hono<AuthedEnv>()
     await meService(createDb(c.env.DB)).setName(c.var.userId, c.req.valid("json").name);
 
     return c.body(null, 204);
+  })
+  /** Settings (screen 20): the language, also used for the circle's SMS, and the police switch. */
+  .put("/settings", validate("json", SetSettings), async (c) => {
+    await meService(createDb(c.env.DB)).updateSettings(c.var.userId, c.req.valid("json"));
+
+    return c.body(null, 204);
+  })
+  /**
+   * Signs out with the safe code (screen 20). The duress PIN gets the same
+   * 204 but keeps the session. The session ends after the answer is sent, so
+   * both codes take the same time.
+   */
+  .post("/sign-out", validate("json", SignOut), async (c) => {
+    const result = await codes(c.env).confirmSignOut(c.var.userId, c.req.valid("json").code);
+
+    switch (result) {
+      case "safe":
+      case "no_codes":
+        c.executionCtx.waitUntil(sessionsService(c.env).end(c.req.raw.headers));
+
+        return c.body(null, 204);
+      case "duress":
+        return c.body(null, 204);
+      case "current_required":
+        return c.json(failure(result), 400);
+      case "wrong_code":
+        return c.json(failure(result), 403);
+      case "too_many_tries":
+        return c.json(failure(result), 429);
+    }
   })
   /**
    * Sets the safe code and duress PIN (screens 10 and 10b) or changes them

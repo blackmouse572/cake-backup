@@ -3,7 +3,7 @@ import { RouteMode, type Place } from "@cage/shared";
 import { layout, space } from "@cage/ui-tokens";
 import { useEffect, useReducer } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { setLocale, useTranslation } from "../i18n";
+import { useTranslation } from "../i18n";
 import { RouteMap } from "../route-map";
 import { allowLocation, currentPosition, placeDetails, planRoute, suggestPlaces } from "../services/places.service";
 import { color, radius, text } from "../theme";
@@ -26,13 +26,13 @@ export function PlanView({
   problem,
   locale,
   onStart,
-  onCircle,
+  onSettings,
 }: {
   busy: boolean;
   problem: PlanProblem | null;
   locale: Locale;
   onStart: (destination: Place, travelMs: number) => void;
-  onCircle: () => void;
+  onSettings: () => void;
 }) {
   const { t } = useTranslation();
   const [state, dispatch] = useReducer(planReducer, initialPlan);
@@ -70,10 +70,10 @@ export function PlanView({
       top={
         <View>
           <RouteMap here={here} to={picked} polyline={route.status === "ready" ? route.route.polyline : null} />
-          <View style={styles.actions}>
-            <IconButton icon="translate" label={t("common.language")} onPress={() => setLocale(locale === "vi" ? "en" : "vi")} />
-            <IconButton icon="group" label={t("circle.name")} onPress={onCircle} />
-          </View>
+          {/* A text button until the icon font has a gear. */}
+          <Pressable accessibilityRole="button" onPress={onSettings} hitSlop={8} style={styles.settings}>
+            <Text style={text("body")}>{t("settings.title")}</Text>
+          </Pressable>
         </View>
       }
       footer={
@@ -188,7 +188,15 @@ export function PlanView({
 }
 
 const styles = StyleSheet.create({
-  actions: { position: "absolute", top: space[3], right: space[4], gap: space[2] },
+  settings: {
+    position: "absolute",
+    top: space[3],
+    right: space[4],
+    paddingHorizontal: space[3],
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: color.surface,
+  },
   fields: {
     marginTop: space[4],
     borderRadius: radius.md,

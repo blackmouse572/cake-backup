@@ -1,6 +1,7 @@
 import { failure, success } from "@cage/shared";
 import { Hono } from "hono";
 import { createAuth } from "./auth";
+import { SESSION_ENDING_ROUTES } from "./constants";
 import { circleController } from "./controllers/circle.controller";
 import { demoController } from "./controllers/demo.controller";
 import { journeysController } from "./controllers/journeys.controller";
@@ -14,6 +15,8 @@ import type { AppEnv } from "./types";
 export const app = new Hono<AppEnv>()
   .use(requestLog)
   .get("/health", (c) => c.json(success({ ok: true })))
+  // Registered before Better Auth's routes so a session alone can't sign out: `POST /me/sign-out` needs the safe code.
+  .on("POST", SESSION_ENDING_ROUTES, (c) => c.json(failure("not_found"), 404))
   // Sign-in: Better Auth's phone-number routes (ADR 0002).
   .on(["GET", "POST"], "/auth/*", (c) => createAuth(c.env).handler(c.req.raw))
   .route("/me", meController)

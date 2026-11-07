@@ -19,6 +19,12 @@ export type SaveCodesResult = "ok" | "too_simple" | "too_close" | "error";
 /** `reverify_required`: the session is too old, send a new sign-in code first. */
 export type ResetCodesResult = SaveCodesResult | "reverify_required" | "journey_open";
 
+/** `wrong_code` and `too_many_tries`: the current safe code wasn't taken (screen 20a). */
+export type ChangeCodesResult = SaveCodesResult | "wrong_code" | "too_many_tries";
+
+/** What a code flow's save step can answer, so one screen serves setting, resetting and changing the codes. */
+export type CodesSaveResult = ResetCodesResult | ChangeCodesResult;
+
 /** True when a session is stored on this device, even offline. */
 export async function hasStoredSession(): Promise<boolean> {
   return (await authClient.getCookie()).includes("session_token");
@@ -62,7 +68,11 @@ export async function fetchMe(): Promise<Me> {
 }
 
 /** Sends a pair of codes and maps the API's error codes to the ones the screens know. */
-async function putCodes<R extends string>(path: string, body: { safe: string; duress: string }, known: R[]): Promise<"ok" | R | "error"> {
+async function putCodes<R extends string>(
+  path: string,
+  body: { safe: string; duress: string; current?: string },
+  known: R[],
+): Promise<"ok" | R | "error"> {
   try {
     const res = await apiFetch(path, { method: "PUT", body: JSON.stringify(body) });
 
@@ -78,6 +88,11 @@ async function putCodes<R extends string>(path: string, body: { safe: string; du
 /** First-time setup of the safe code and duress PIN (screens 10 and 10b). */
 export function saveCodes(safe: string, duress: string): Promise<SaveCodesResult> {
   return putCodes("/me/codes", { safe, duress }, ["too_simple", "too_close"]);
+}
+
+/** Screen 20a: new codes, with the current safe code to prove it is the traveller. */
+export function changeCodes(safe: string, duress: string, current: string | undefined): Promise<ChangeCodesResult> {
+  return putCodes("/me/codes", { safe, duress, current }, ["too_simple", "too_close", "wrong_code", "too_many_tries"]);
 }
 
 /**

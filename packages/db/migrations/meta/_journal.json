@@ -50,6 +50,13 @@
       "when": 1793864179097,
       "tag": "0006_demo",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794043608098,
+      "tag": "0007_circle_link_opened",
+      "breakpoints": true
     }
   ]
 }

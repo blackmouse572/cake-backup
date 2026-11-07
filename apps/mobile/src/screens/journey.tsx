@@ -7,6 +7,7 @@ import { DEMO } from "../auth";
 import { useTranslation } from "../i18n";
 import { currentJourney, enterCode, fetchJourney, forgetJourney, sendUpdate, startJourney } from "../services/journey.service";
 import { allowLocation, watchReadings } from "../services/places.service";
+import { saveSettings } from "../services/settings.service";
 import { color, text } from "../theme";
 import { BackBar, Caption, CodeDots, Icon, IconLine, Keypad, Note, PrimaryButton, Screen, Title } from "../ui";
 import { initialJourneyFlow, journeyReducer, type CodeEntry, type JourneyAction } from "./journey.reducer";
@@ -30,7 +31,7 @@ const SECOND_MS = 1_000;
  * `journeyReducer`; this file draws it and talks to the services.
  * Screen 01 (search, route, travel time) is `PlanView` in plan.tsx.
  */
-export function JourneyFlow({ onCircle }: { onCircle: () => void }) {
+export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
   const { i18n } = useTranslation();
   const locale: Locale = isLocale(i18n.language) ? i18n.language : "vi";
   const [state, dispatch] = useReducer(journeyReducer, initialJourneyFlow);
@@ -101,6 +102,9 @@ export function JourneyFlow({ onCircle }: { onCircle: () => void }) {
 
     if (!(await allowLocation())) return dispatch({ type: "startFailed", problem: "need_location" });
 
+    // The server picks the circle's language from settings, so it must know the one on screen now. Failing to say isn't a reason not to start.
+    await saveSettings({ locale });
+
     const started = await startJourney({
       destination: { name: destination.name, lat: destination.lat, lng: destination.lng },
       expectedArrivalAt: Date.now() + travelMs,
@@ -114,7 +118,7 @@ export function JourneyFlow({ onCircle }: { onCircle: () => void }) {
 
   switch (state.name) {
     case "plan":
-      return <PlanView busy={state.busy} problem={state.problem} locale={locale} onStart={start} onCircle={onCircle} />;
+      return <PlanView busy={state.busy} problem={state.problem} locale={locale} onStart={start} onSettings={onSettings} />;
     case "ended":
       return <EndedView onNewTrip={() => dispatch({ type: "newTrip" })} />;
     case "travelling":

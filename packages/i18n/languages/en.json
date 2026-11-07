@@ -176,12 +176,59 @@
       "too_close": "The duress code must differ from the safe code in at least 2 digits.",
       "mismatch": "The two entries don't match. Start again.",
       "error": "Couldn't save the codes. Check your connection and try again.",
-      "journey_open": "You're on a trip. End it first, then reset your codes."
+      "journey_open": "You're on a trip. End it first, then reset your codes.",
+      "wrong_code": "That code isn't right. Try again.",
+      "too_many_tries": "Too many wrong codes. Try again in a few minutes."
+    },
+    "current": {
+      "title": "Enter your current safe code",
+      "body": "To change your codes, Cage needs to know it's you."
     },
     "forgot": "Forgot your code?",
     "reset": {
       "title": "Reset your codes",
       "body": "Cage sends a 6-digit code to {{phone}} to check it's you. Then you set new codes and the old ones stop working."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "sections": {
+      "safety": "Safety",
+      "privacy": "Privacy",
+      "general": "General"
+    },
+    "people": "{{count}}",
+    "checkInCall": "Check-in call",
+    "codes": "Safe code and duress code",
+    "police": "Alert police",
+    "policeWhy": "Off by default, because for people without papers the police can be a risk. Turn it on only if you want it.",
+    "disguise": "Disguise",
+    "language": "Language",
+    "signOut": "Sign out",
+    "soon": "Coming soon",
+    "error": "Couldn't save. Check your connection and try again.",
+    "languageScreen": {
+      "body": "Choose the app's language. It changes right away, no restart needed.",
+      "list": "App language",
+      "changes": "What changes",
+      "app": "Text on every Cage screen, including the check-in call.",
+      "messages": "Messages and the tracking page sent to your safety circle. Each person can still change the language on that page.",
+      "disguise": "The disguise name on your home screen stays the same.",
+      "inVi": "Vietnamese",
+      "inEn": "English"
+    },
+    "codesScreen": {
+      "title": "Your codes",
+      "safe": "Safe code",
+      "safeNote": "Tells Cage you're OK",
+      "duress": "Duress code",
+      "duressNote": "Quietly raises the alert",
+      "change": "Change",
+      "info": "To change your codes, enter your current safe code, then set both new codes, each entered twice."
+    },
+    "signOutScreen": {
+      "title": "Sign out",
+      "body": "Enter your safe code to sign out. That way a stranger holding your phone can't sign out."
     }
   },
   "messages": {

@@ -10,7 +10,7 @@ describe("sign-in with a phone number", () => {
     const res = await api("/me", { headers: { cookie } });
     expect(res.status).toBe(200);
     const me = await readData(res, Me);
-    expect(me).toEqual({ phoneNumber, name: "", hasCodes: false, circleSize: 0, locale: "vi" });
+    expect(me).toEqual({ phoneNumber, name: "", hasCodes: false, circleSize: 0, locale: "vi", policeEnabled: false });
   });
 
   it("signs an existing number back into the same account", async () => {

@@ -85,6 +85,8 @@ These patterns are from general knowledge and still need checking against source
 - Safety circle contacts don't need an account. Their link opens only that journey and stops working when it ends.
 - Once signed in, the app stays signed in. It never opens on a sign-in screen, which would give it away in disguise mode.
 - A session alone can't cancel an alert or end a journey. Both need the safe code, and the duress PIN works there too.
+- Signing out needs the safe code too (screen 20), so a thief holding a signed-in phone can't sign out to stop the alerts. The duress PIN gets exactly the same answer and the phone signs out, but the server keeps the session. Raising an alert for that PIN while a journey is open comes with the alert engine (#22), as it does for changing the codes. A traveller with no codes yet may sign out without one. The server answers Better Auth's own sign-out and revoke-session routes with 404, so the code can't be skipped.
+- Settings (screen 20): the safety circle, changing the codes (the current safe code, then both new codes), the language and the police switch (off by default: for people without papers, police can be a risk). The check-in call (14) and disguise (18) rows show "coming soon" until those screens exist.
 - How it is built: [ADR 0002](adr/0002-sign-in.md).
 
 ## The server's job
@@ -112,7 +114,7 @@ The server is the most sensitive part of Cage because it knows where users are. 
 
 ## Non-functional requirements
 
-- All copy in Vietnamese first, English second. The app follows the phone's language on first launch (Vietnamese unless the phone is set to English) and the user can switch at any time. The circle's website, the check-in call and alert messages use the traveller's language ([ADR 0003](adr/0003-i18n.md)).
+- All copy in Vietnamese first, English second. The app follows the phone's language on first launch (Vietnamese unless the phone is set to English) and the user can switch at any time. The circle's website, the check-in call and alert messages use the traveller's language ([ADR 0003](adr/0003-i18n.md)). That language is saved on the server (`traveller_settings.locale`): the app sends it whenever the traveller changes it and before each journey starts, and the server takes it from there, not from the journey request.
 - Background location: high accuracy only during an active trip, lower update rate when not moving. Test early on cheap Android phones, which kill background apps aggressively.
 - Every safety feature is free for users.
 

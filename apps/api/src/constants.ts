@@ -38,6 +38,18 @@ export const CHANGE_CODES = {
 } as const;
 
 /**
+ * Better Auth routes that end a session. A session alone must not be able to
+ * sign out, so they answer 404 and `POST /me/sign-out`, which needs the safe
+ * code, is the only way.
+ */
+export const SESSION_ENDING_ROUTES = [
+  "/auth/sign-out",
+  "/auth/revoke-session",
+  "/auth/revoke-sessions",
+  "/auth/revoke-other-sessions",
+];
+
+/**
  * The "Quên mã?" (forgot code) path: new codes without the current safe
  * code, only from a session created this recently, i.e. right after a fresh
  * sign-in code to the traveller's phone.

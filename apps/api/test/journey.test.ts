@@ -76,6 +76,34 @@ async function endJourney(id: string) {
   });
 }
 
+const saveSettings = (cookie: string, body: { locale: string }) =>
+  api("/me/settings", {
+    method: "PUT",
+    headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+describe("the language of a journey", () => {
+  it("is the language saved in settings, which the circle's SMS and page follow", async () => {
+    const cookie = await traveller();
+    expect((await saveSettings(cookie, { locale: "en" })).status).toBe(204);
+
+    const { journey } = await startJourney(cookie);
+
+    expect(journey.locale).toBe("en");
+  });
+
+  it("is not overruled by the language an older app sends with the journey", async () => {
+    const cookie = await traveller();
+    await saveSettings(cookie, { locale: "en" });
+
+    const res = await post("/journeys", { ...start, locale: "vi" }, { cookie });
+    const { journey } = await readData(res, StartedJourney);
+
+    expect(journey.locale).toBe("en");
+  });
+});
+
 describe("journeys API", () => {
   it("answers health checks", async () => {
     expect(await (await api("/health")).json()).toEqual({ data: { ok: true } });
@@ -221,11 +249,11 @@ const enter = (id: string, action: "answer" | "end", code: string, cookie: strin
   send(`/journeys/${id}/${action}`, "POST", { code }, { cookie });
 
 /** The raw tokens of the links sent for a journey can't be read back, so tests mint their own row. */
-async function linkFor(journeyId: string): Promise<string> {
+async function linkFor(journeyId: string, contactIndex = 0): Promise<string> {
   const contact = await env.DB.prepare(
-    "select c.id from circle_contacts c join journeys j on j.user_id = c.user_id where j.id = ? order by c.position",
+    "select c.id from circle_contacts c join journeys j on j.user_id = c.user_id where j.id = ? order by c.position limit 1 offset ?",
   )
-    .bind(journeyId)
+    .bind(journeyId, contactIndex)
     .first<{ id: string }>();
 
   const token = `test-${crypto.randomUUID()}`;
@@ -239,6 +267,13 @@ async function linkFor(journeyId: string): Promise<string> {
 const openLink = (token: string) => api(`/links/${token}`);
 
 const circleView = async (token: string) => readData(await openLink(token), CircleJourneyView);
+
+const linkOpenedAt = async (token: string) =>
+  (
+    await env.DB.prepare("select opened_at as at from circle_links where token_hash = ?")
+      .bind(await hashToken(token))
+      .first<{ at: number | null }>()
+  )?.at;
 
 const countRows = async (sql: string, id: string) =>
   (await env.DB.prepare(sql).bind(id).first<{ n: number }>())!.n;
@@ -313,6 +348,46 @@ describe("the safety circle's links", () => {
 
     await api(`/circle/${contact!.id}`, { method: "DELETE", headers: { cookie: revoked.cookie } });
     expect((await openLink(revokedLink)).status).toBe(404);
+  });
+
+  it("answers a changed, cut short or extended link token with 404, and leaves other journeys' links working", async () => {
+    const { journey } = await startJourney();
+    const other = await startJourney();
+    const token = await linkFor(journey.id);
+    expect((await openLink(token)).status).toBe(200);
+
+    const changed = `${token.slice(0, -1)}${token.endsWith("x") ? "y" : "x"}`;
+    expect((await openLink(changed)).status).toBe(404);
+    expect((await openLink(token.slice(0, -1))).status).toBe(404);
+    expect((await openLink(`${token}x`)).status).toBe(404);
+    expect((await openLink(await linkFor(other.journey.id))).status).toBe(200);
+  });
+
+  it("notes which contact opened their link, and when", async () => {
+    const { journey } = await startJourney();
+    const first = await linkFor(journey.id, 0);
+    const second = await linkFor(journey.id, 1);
+
+    expect(await linkOpenedAt(first)).toBeNull();
+    expect(await linkOpenedAt(second)).toBeNull();
+
+    const before = Date.now();
+    await circleView(second);
+    expect(await linkOpenedAt(first)).toBeNull();
+    expect(await linkOpenedAt(second)).toBeGreaterThanOrEqual(before);
+  });
+
+  it("keeps the first time a contact opened their link", async () => {
+    const { journey } = await startJourney();
+    const token = await linkFor(journey.id);
+
+    await circleView(token);
+    const first = await linkOpenedAt(token);
+    expect(first).toBeGreaterThan(0);
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await circleView(token);
+    expect(await linkOpenedAt(token)).toBe(first);
   });
 
   it("moves an unopened alert to the hotline step after the timeout", async () => {
@@ -398,6 +473,26 @@ describe("ending a journey", () => {
     const row = await env.DB.prepare("select status, ended_at from journeys where id = ?").bind(journey.id).first();
     expect(row?.status).toBe("ended");
     expect(row?.ended_at).not.toBeNull();
+  });
+
+  it("drops the circle's links once the safe code ends the journey", async () => {
+    const { journey, cookie } = await startJourney();
+    await flush(journey.id);
+    expect(await countRows("select count(*) as n from circle_links where journey_id = ?", journey.id)).toBe(2);
+
+    expect((await enter(journey.id, "end", SAFE, cookie)).status).toBe(204);
+    await flush(journey.id);
+    expect(await countRows("select count(*) as n from circle_links where journey_id = ?", journey.id)).toBe(0);
+  });
+
+  it("keeps the circle's links after the duress PIN, so they can still follow the alert", async () => {
+    const { journey, cookie } = await startJourney();
+    await flush(journey.id);
+    expect((await enter(journey.id, "end", DURESS, cookie)).status).toBe(204);
+    await flush(journey.id);
+    expect(
+      await countRows("select count(*) as n from circle_links where journey_id = ?", journey.id),
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("refuses a wrong code", async () => {
