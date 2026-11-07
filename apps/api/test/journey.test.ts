@@ -234,7 +234,9 @@ async function lostContactMessage(battery: number): Promise<string> {
     .bind(journey.id)
     .first<{ text: string }>();
 
-  return row?.text ?? "";
+  expect(row).not.toBeNull();
+
+  return row!.text;
 }
 
 const travellerView = async (id: string, cookie: string) =>
@@ -301,6 +303,12 @@ describe("journey timers", () => {
 
     expect((await stubFor(journey.id).view())?.status).toBe("check_in");
     expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
+
+    const lost = await env.DB.prepare("select count(*) as n from demo_messages where journey_id = ? and text like ?")
+      .bind(journey.id, "%mất kết nối%")
+      .first<{ n: number }>();
+
+    expect(lost?.n).toBe(0);
   });
 
   it("checks in instead when updates are still arriving", async () => {

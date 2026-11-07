@@ -23,8 +23,8 @@ export type Channel = "zalo" | "sms";
 export type Message =
   | { kind: "code"; code: string }
   | { kind: "journey_started"; name: string; destination: string; arriveAt: number; url: string }
-  /** `batteryDied` changes only the lost-contact message: the last update had a nearly empty battery. */
-  | { kind: "alert"; reason: AlertReason; name: string; url: string; batteryDied?: boolean }
+  /** `likelyBatteryDied` changes only the lost-contact message: the last update had a nearly empty battery. */
+  | { kind: "alert"; reason: AlertReason; name: string; url: string; likelyBatteryDied?: boolean }
   | { kind: "safe_now"; name: string };
 
 export type MessageKind = Message["kind"];

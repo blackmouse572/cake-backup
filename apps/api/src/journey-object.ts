@@ -357,9 +357,12 @@ export class JourneyObject extends DurableObject<Bindings> {
       state.deadlineAt = null;
     }
 
-    // Most silences are a dead battery, so the circle hears that first (PRD, "Lost contact").
-    const batteryDied = reason === "lost_contact" ? likelyBatteryDied(state.lastUpdate) : undefined;
-    state.outbox.push({ kind: "alert", reason, batteryDied });
+    // A phone that died at low battery gets a calm "phone probably died" message (PRD, "Lost contact").
+    state.outbox.push({
+      kind: "alert",
+      reason,
+      likelyBatteryDied: reason === "lost_contact" ? likelyBatteryDied(state.lastUpdate) : undefined,
+    });
   }
 
   private async wrongCode(state: JourneyState, now: number): Promise<CodeResult> {
