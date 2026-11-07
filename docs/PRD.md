@@ -71,7 +71,7 @@ These patterns are from general knowledge and still need checking against source
 - Contacts are picked from the phone book (only the people ticked leave the phone) or typed in. One contact is allowed but the app nudges for a second; the circle holds at most 10, each number once, never the traveller's own. The order on screen is the order they are told in.
 
 ### SOS and fake call
-- SOS is always one tap away during a journey.
+- SOS is always reachable during a journey, on the on-route screen (02), the check-in screen (03) and the lost-contact screen. It is a one-second press and hold, with a progress bar and a buzz, so a pocket press can't raise it. It needs no code: it alerts the safety circle at once (`POST /journeys/:id/sos`). Lost contact only tells the circle calmly, so an SOS raises it to an SOS alert; any other alert (duress, no answer) stays as it is and the circle is not told twice. If the SOS doesn't reach the server the phone says so and the traveller can hold again. The safe code clears it, like any alert.
 - A fake incoming call helps the user leave an uncomfortable situation.
 
 ### Disguise mode

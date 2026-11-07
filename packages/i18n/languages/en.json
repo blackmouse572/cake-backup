@@ -324,7 +324,11 @@
   "onRoute": {
     "arrive": "arrival",
     "left": "{{minutes}} min left",
-    "sharing": "Your safety circle can see where you are"
+    "sharing": "Your safety circle can see where you are",
+    "sos": "Hold for SOS",
+    "sosHint": "Hold for 1 second to alert your safety circle at once",
+    "sosSending": "Alerting your safety circle",
+    "sosFailed": "Couldn't send the SOS. Check your connection and hold again."
   },
   "ask": {
     "autoAlert": "If time runs out, Cage tells your safety circle.",
