@@ -179,6 +179,8 @@ export const circleLinks = sqliteTable(
       .references(() => journeys.id, { onDelete: "cascade" }),
     /** Not a foreign key: removing a contact must leave the row, and `isMember` refuses it. */
     contactId: text("contact_id").notNull(),
+    /** When this contact first opened the link. Null until they do. */
+    openedAt: integer("opened_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
   },
   (t) => [index("circle_links_journey_idx").on(t.journeyId)],

@@ -44,7 +44,7 @@ let counter = 0;
 export function newNumber(): string {
   counter += 1;
 
-  return `+8490${String(Date.now() % 100_000).padStart(5, "0")}${String(counter).padStart(2, "0")}`;
+  return `+8490${String(Date.now() % 100_000).padStart(5, "0")}${String(counter % 100).padStart(2, "0")}`;
 }
 
 let ips = 0;

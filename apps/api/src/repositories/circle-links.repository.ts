@@ -1,5 +1,5 @@
 import { circleLinks, type Db } from "@cage/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 export type CircleLinkRow = typeof circleLinks.$inferSelect;
 
@@ -14,6 +14,14 @@ export function circleLinksRepository(db: Db) {
 
     findByHash(tokenHash: string): Promise<CircleLinkRow | undefined> {
       return db.select().from(circleLinks).where(eq(circleLinks.tokenHash, tokenHash)).get();
+    },
+
+    /** Keeps the first time: a link already marked is left alone. */
+    async recordOpened(tokenHash: string, at: Date): Promise<void> {
+      await db
+        .update(circleLinks)
+        .set({ openedAt: at })
+        .where(and(eq(circleLinks.tokenHash, tokenHash), isNull(circleLinks.openedAt)));
     },
 
     async deleteForJourney(journeyId: string): Promise<void> {
