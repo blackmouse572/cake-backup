@@ -29,6 +29,12 @@
       ],
       "expo-localization",
       [
+        "expo-notifications",
+        {
+          "color": "#111111"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Để vòng an toàn thấy bạn đang ở đâu trong chuyến đi. Vị trí chỉ được chia sẻ khi bạn đang đi."

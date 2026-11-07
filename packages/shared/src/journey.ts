@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Code } from "./codes";
+import { CheckInReason } from "./check-in";
 import { AlertReason } from "./escalation";
 
 export const LatLng = z.object({
@@ -14,6 +15,12 @@ export const StartJourney = z.object({
   destination: LatLng.extend({ name: z.string().min(1).max(200) }),
   /** Expected arrival, epoch milliseconds. */
   expectedArrivalAt: z.number().int().positive(),
+  /**
+   * The route shown on screen 01, as an encoded polyline (precision 5, as
+   * `Route.polyline`). The server checks each update against it (#19).
+   * Without one, only "stopped too long" and "late" can trigger a check-in.
+   */
+  route: z.string().min(1).max(50_000).optional(),
   /** Lost contact can be turned on per trip, for risky journeys only. */
   lostContactEnabled: z.boolean().default(true),
   /**
@@ -64,6 +71,12 @@ export const JourneyView = z.object({
   /** When the server will next look at this journey on its own. */
   nextDeadlineAt: z.number().nullable(),
   likelyBatteryDied: z.boolean(),
+  /**
+   * While the status is `check_in`: why Cage asked and when. The phone works
+   * out which call is ringing from `askedAt` (`checkInCall`). Older servers
+   * leave it out.
+   */
+  checkIn: z.object({ reason: CheckInReason, askedAt: z.number() }).nullable().default(null),
 });
 
 export type JourneyView = z.infer<typeof JourneyView>;

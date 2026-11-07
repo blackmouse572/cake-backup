@@ -3,17 +3,23 @@ import {
   alertStep,
   arrivalDeadline,
   atArrivalDeadline,
+  checkInCallTimes,
   checkInDeadline,
+  decodePolyline,
+  freshWatch,
   likelyBatteryDied,
   outranks,
   TIMERS,
+  watchRoute,
   type AlertReason,
+  type CheckInReason,
   type CircleJourneyView,
   type DemoJourneyView,
   type CodeCheck,
   type JourneyStatus,
   type JourneyView,
   type LocationUpdate,
+  type RouteWatch,
   type ReachedOutcome,
   type StartJourney,
 } from "@cage/shared";
@@ -21,10 +27,12 @@ import { DurableObject } from "cloudflare:workers";
 import type { Bindings } from "./bindings";
 import { JOURNEY_CODES } from "./constants";
 import { messageSenderFor } from "./message-sender";
+import { pushSenderFor } from "./push-sender";
 import { logError } from "./middleware/request-log";
 import { loggingSender } from "./senders/dev.sender";
 import { circleLinksRepository } from "./repositories/circle-links.repository";
 import { journeysRepository } from "./repositories/journeys.repository";
+import { checkInCallsService } from "./services/check-in-calls.service";
 import { circleMessagesService, type CircleNotice } from "./services/circle-messages.service";
 import { sameString } from "./utils";
 
@@ -81,6 +89,20 @@ interface JourneyState {
   syncedStatus: JourneyStatus;
   /** Demo only: the dashboard moves the traveller, so the phone's own positions are ignored. */
   simulated?: boolean;
+  /**
+   * The planned route as an encoded polyline, checked on every update (#19).
+   * Dropped once the traveller says they're fine after leaving it. Missing on
+   * journeys started without one.
+   */
+  route?: string | null;
+  /** What the route rules remember between updates. */
+  watch?: RouteWatch;
+  /** The check-in in progress: why and when Cage asked. Null outside a check-in. */
+  checkIn?: { reason: CheckInReason; askedAt: number } | null;
+  /** When the server next rings the phone for this check-in, or null (#20). */
+  callAt?: number | null;
+  /** Check-in calls rung so far for this check-in: 0, 1 or 2. */
+  callsRung?: number;
 }
 
 /** An update from a phone without this journey's live token. */
@@ -126,6 +148,11 @@ export class JourneyObject extends DurableObject<Bindings> {
       wrongCodes: 0,
       wrongCodeAt: null,
       syncedStatus: "active",
+      route: input.route ?? null,
+      watch: freshWatch,
+      checkIn: null,
+      callAt: null,
+      callsRung: 0,
       outbox: [
         { kind: "journey_started", destination: input.destination.name, arriveAt: input.expectedArrivalAt },
       ],
@@ -154,6 +181,8 @@ export class JourneyObject extends DurableObject<Bindings> {
     // On the demo the dashboard drives the traveller, so the phone's own updates never bring it back.
     if (state.shownStatus === "lost_contact" && !state.simulated) {
       this.backOnline(state, now);
+      await this.save(state);
+    } else if (!state.simulated && this.watch(state, update, now)) {
       await this.save(state);
     } else {
       await this.ctx.storage.put(STATE, state);
@@ -232,8 +261,9 @@ export class JourneyObject extends DurableObject<Bindings> {
   }
 
   /**
-   * The phone saw something wrong (off route, stopped too long; #23) and
-   * asks "are you safe?". The server takes over the timer from here.
+   * Asks "are you safe?" now, as if the traveller had left the route: the
+   * demo dashboard's button, and older apps that ran the route rules on the
+   * phone. The server runs them itself on every update (#19).
    */
   async requestCheckIn(now = Date.now()): Promise<JourneyView | null> {
     const state = await this.load();
@@ -241,14 +271,11 @@ export class JourneyObject extends DurableObject<Bindings> {
     if (!state) return null;
 
     if (state.status === "active") {
-      state.status = "check_in";
-      state.shownStatus = "check_in";
-      state.deadlineAt = checkInDeadline(now);
+      this.askCheckIn(state, "off_route", now);
       await this.save(state);
     } else if (hiddenDuress(state) && state.shownStatus === "active") {
       // The circle is already alerted; the phone gets the check-in it would get after the safe code.
-      state.shownStatus = "check_in";
-      state.deadlineAt = checkInDeadline(now);
+      this.askCheckIn(state, "off_route", now);
       await this.save(state);
     }
 
@@ -269,6 +296,7 @@ export class JourneyObject extends DurableObject<Bindings> {
     if (hiddenDuress(state)) {
       state.shownStatus = "alerted";
       state.deadlineAt = null;
+      this.endCheckIn(state);
     }
 
     this.raiseAlert(state, "sos", now);
@@ -296,6 +324,10 @@ export class JourneyObject extends DurableObject<Bindings> {
     state.wrongCodes = 0;
     state.deadlineAt = nextDeadline;
     state.shownStatus = "active";
+
+    // Off route but fine: they're taking another way, so stop holding them to the old one.
+    if (state.checkIn?.reason === "off_route") state.route = null;
+    this.endCheckIn(state);
 
     if (check === "duress") {
       this.raiseAlert(state, "duress", now);
@@ -328,6 +360,7 @@ export class JourneyObject extends DurableObject<Bindings> {
     state.wrongCodes = 0;
     state.shownStatus = "ended";
     state.deadlineAt = null;
+    this.endCheckIn(state);
 
     if (check === "duress") {
       this.raiseAlert(state, "duress", now);
@@ -338,6 +371,7 @@ export class JourneyObject extends DurableObject<Bindings> {
       state.ladderAt = null;
       // Location data is deleted when a journey ends (PRD, privacy). Saving to the journal comes with #32.
       state.lastUpdate = null;
+      state.route = null;
     }
 
     await this.save(state);
@@ -345,14 +379,18 @@ export class JourneyObject extends DurableObject<Bindings> {
     return "ok";
   }
 
-  /** Demo only: the next timer (a deadline or the climb to the hotline) fires now instead of in 20 or 10 minutes. */
+  /**
+   * Demo only: the next deadline or the climb to the hotline fires now
+   * instead of in minutes. Check-in calls still ring on their own clock, so
+   * one skip during a check-in is "nobody answered either call".
+   */
   async skipToDeadline(): Promise<void> {
     const state = await this.load();
-    const next = state ? nextTimer(state) : null;
+    const timers = state ? [state.deadlineAt, state.ladderAt ?? null].filter((t): t is number => t !== null) : [];
 
-    if (!state || next === null) return;
+    if (!state || timers.length === 0) return;
 
-    if (next === state.deadlineAt) state.deadlineAt = Date.now();
+    if (Math.min(...timers) === state.deadlineAt) state.deadlineAt = Date.now();
     else state.ladderAt = Date.now();
     await this.save(state);
   }
@@ -375,7 +413,9 @@ export class JourneyObject extends DurableObject<Bindings> {
     state.lastUpdate = update;
     state.lastHeardAt = now;
     state.simulated = true;
-    await this.ctx.storage.put(STATE, state);
+
+    if (this.watch(state, update, now)) await this.save(state);
+    else await this.ctx.storage.put(STATE, state);
 
     return true;
   }
@@ -411,6 +451,7 @@ export class JourneyObject extends DurableObject<Bindings> {
       this.climb(state);
     }
 
+    const call = this.nextCall(state, now);
     const outbox = state.outbox;
     const statusChanged = state.syncedStatus !== state.status;
     state.outbox = [];
@@ -418,7 +459,68 @@ export class JourneyObject extends DurableObject<Bindings> {
 
     // Saved before sending, so a crash mid-send never sends the same notice twice.
     await this.save(state);
-    await this.deliver(state, outbox, statusChanged);
+    await this.deliver(state, outbox, statusChanged, call);
+  }
+
+  /**
+   * Runs the route rules on an update (#19) and asks "are you safe?" when
+   * the traveller has left the route or stopped too long. Only while the
+   * journey runs normally: never on top of a check-in or an alert. True when
+   * a check-in started, so the caller saves with the alarm.
+   */
+  private watch(state: JourneyState, update: LocationUpdate, now: number): boolean {
+    const running = state.status === "active" || hiddenDuress(state);
+
+    if (!running || state.shownStatus !== "active") return false;
+
+    const route = state.route ? decodePolyline(state.route) : null;
+    const reading = { lat: update.lat, lng: update.lng, at: now, accuracyM: update.accuracyM };
+    const { watch, reason } = watchRoute(state.watch ?? freshWatch, reading, route, state.destination);
+    state.watch = watch;
+
+    if (!reason) return false;
+    this.askCheckIn(state, reason, now);
+
+    return true;
+  }
+
+  /**
+   * Asks "are you safe?": the app shows screen 03 if it is open, and the
+   * server rings the phone now and once more `TIMERS.checkInRetryMs` later
+   * (#20). The alert comes when the second call stops ringing.
+   */
+  private askCheckIn(state: JourneyState, reason: CheckInReason, now: number): void {
+    // After a hidden duress PIN the circle already has the alert; only the phone is asked, and rung, as it would be after the safe code.
+    if (!hiddenDuress(state)) state.status = "check_in";
+    state.shownStatus = "check_in";
+    state.deadlineAt = checkInDeadline(now);
+    state.checkIn = { reason, askedAt: now };
+    state.callAt = checkInCallTimes(now)[0];
+    state.callsRung = 0;
+  }
+
+  /** The check-in is over (answered, or it became an alert): no more calls, and the route rules start afresh. */
+  private endCheckIn(state: JourneyState): void {
+    state.checkIn = null;
+    state.callAt = null;
+    state.watch = freshWatch;
+  }
+
+  /** The check-in call due now, if any, and when the next one is. */
+  private nextCall(state: JourneyState, now: number): 1 | 2 | null {
+    if (state.callAt == null || now < state.callAt) return null;
+
+    if (state.shownStatus !== "check_in" || !state.checkIn) {
+      state.callAt = null;
+
+      return null;
+    }
+
+    const call = (state.callsRung ?? 0) >= 1 ? 2 : 1;
+    state.callsRung = call;
+    state.callAt = call === 1 ? checkInCallTimes(state.checkIn.askedAt)[1] : null;
+
+    return call;
   }
 
   private onDeadline(state: JourneyState, now: number): void {
@@ -446,9 +548,7 @@ export class JourneyObject extends DurableObject<Bindings> {
     if (next === "lost_contact") {
       this.raiseAlert(state, "lost_contact", now);
     } else if (next === "check_in") {
-      state.status = "check_in";
-      state.shownStatus = "check_in";
-      state.deadlineAt = checkInDeadline(now);
+      this.askCheckIn(state, "late", now);
     }
   }
 
@@ -462,6 +562,7 @@ export class JourneyObject extends DurableObject<Bindings> {
   private phoneDeadline(state: JourneyState, now: number): void {
     if (state.shownStatus === "check_in") {
       state.shownStatus = "alerted";
+      this.endCheckIn(state);
 
       return;
     }
@@ -475,8 +576,12 @@ export class JourneyObject extends DurableObject<Bindings> {
       lastHeardAt: state.lastHeardAt,
     });
 
-    state.shownStatus = next === "lost_contact" ? "lost_contact" : "check_in";
-    state.deadlineAt = next === "lost_contact" ? null : checkInDeadline(now);
+    if (next === "lost_contact") {
+      state.shownStatus = "lost_contact";
+      state.deadlineAt = null;
+    } else {
+      this.askCheckIn(state, "late", now);
+    }
   }
 
   /**
@@ -550,6 +655,7 @@ export class JourneyObject extends DurableObject<Bindings> {
     if (reason !== "duress") {
       state.shownStatus = state.status;
       state.deadlineAt = null;
+      this.endCheckIn(state);
     }
 
     // A phone that died at low battery gets a calm "phone probably died" message (PRD, "Lost contact").
@@ -574,6 +680,7 @@ export class JourneyObject extends DurableObject<Bindings> {
     } else if (state.wrongCodes >= JOURNEY_CODES.wrongTries && hiddenDuress(state) && state.shownStatus === "check_in") {
       state.shownStatus = "alerted";
       state.deadlineAt = null;
+      this.endCheckIn(state);
     }
 
     await this.save(state);
@@ -581,10 +688,22 @@ export class JourneyObject extends DurableObject<Bindings> {
     return state.wrongCodes >= JOURNEY_CODES.wrongTries ? "too_many_tries" : "wrong_code";
   }
 
-  /** Sends what the alarm took from the outbox and mirrors the status to D1. */
-  private async deliver(state: JourneyState, outbox: CircleNotice[], statusChanged: boolean): Promise<void> {
+  /** Rings the phone if a check-in call is due, sends what the alarm took from the outbox and mirrors the status to D1. */
+  private async deliver(
+    state: JourneyState,
+    outbox: CircleNotice[],
+    statusChanged: boolean,
+    call: 1 | 2 | null,
+  ): Promise<void> {
     const db = createDb(this.env.DB);
     const journey = { id: state.id, userId: state.userId, locale: state.locale };
+
+    try {
+      // First: a call is only worth anything while it rings.
+      if (call !== null) await checkInCallsService(db, pushSenderFor(this.env)).ring(journey, call);
+    } catch (err) {
+      logError(err instanceof Error ? err : new Error(String(err)), "journey-object.ring");
+    }
 
     try {
       if (statusChanged) {
@@ -644,9 +763,9 @@ function endedForPhone(state: JourneyState): boolean {
   return state.status === "ended" || state.shownStatus === "ended";
 }
 
-/** The journey's next timer: its deadline or the alert's climb to the hotline, whichever comes first. */
+/** The journey's next timer: its deadline, the next check-in call or the alert's climb to the hotline, whichever comes first. */
 function nextTimer(state: JourneyState): number | null {
-  const timers = [state.deadlineAt, state.ladderAt ?? null].filter((t): t is number => t !== null);
+  const timers = [state.deadlineAt, state.ladderAt ?? null, state.callAt ?? null].filter((t): t is number => t !== null);
 
   return timers.length > 0 ? Math.min(...timers) : null;
 }
@@ -671,5 +790,6 @@ function travellerView(state: JourneyState): JourneyView {
     lastUpdate: state.lastUpdate,
     nextDeadlineAt: state.deadlineAt,
     likelyBatteryDied: likelyBatteryDied(state.lastUpdate),
+    checkIn: state.shownStatus === "check_in" ? (state.checkIn ?? null) : null,
   };
 }

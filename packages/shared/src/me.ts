@@ -11,6 +11,13 @@ export const Me = z.object({
   locale: z.enum(["vi", "en"]),
   /** Off by default: police (Công an 113) are the last step of the ladder, and only if the traveller turned it on. */
   policeEnabled: z.boolean(),
+  /**
+   * Who the check-in call looks like it is from (screen 14). Empty means the
+   * default for the language, `call.defaultCaller` ("Mẹ").
+   */
+  callerName: z.string().default(""),
+  /** The check-in call vibrates without ringing. */
+  callVibrateOnly: z.boolean().default(false),
 });
 
 export type Me = z.infer<typeof Me>;
@@ -24,6 +31,9 @@ export const SetSettings = z
   .object({
     locale: z.enum(["vi", "en"]),
     policeEnabled: z.boolean(),
+    /** Empty goes back to the default caller. */
+    callerName: z.string().trim().max(30),
+    callVibrateOnly: z.boolean(),
   })
   .partial()
   .refine((settings) => Object.keys(settings).length > 0, { message: "Nothing to change" });
@@ -42,3 +52,14 @@ export type SignOut = z.infer<typeof SignOut>;
 export const SetName = z.object({ name: z.string().trim().min(1).max(50) });
 
 export type SetName = z.infer<typeof SetName>;
+
+/**
+ * Body of `PUT /me/push-token`: the phone's Expo push token, so the server
+ * can ring it for a check-in call while the app is closed (#20).
+ */
+export const SetPushToken = z.object({
+  token: z.string().regex(/^Expo(nent)?PushToken\[[^\]]+\]$/).max(200),
+  platform: z.enum(["ios", "android"]),
+});
+
+export type SetPushToken = z.infer<typeof SetPushToken>;

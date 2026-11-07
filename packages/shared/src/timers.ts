@@ -11,6 +11,10 @@ export const TIMERS = {
   checkInAnswerMs: 60_000,
   /** One missed check-in call is retried after this long before escalating. */
   checkInRetryMs: 2 * 60_000,
+  /** Off the route this long, on every update, before Cage asks (one bad GPS fix never does). */
+  offRouteForMs: 2 * 60_000,
+  /** Standing in one spot this long, away from the destination, before Cage asks. */
+  stoppedTooLongMs: 12 * 60_000,
   /** If nobody in the circle opens the alert within this time, move up the ladder. */
   circleOpenTimeoutMs: 10 * 60_000,
   /** How long SOS must be held before it raises the alert, so a pocket press can't (PRD, "SOS and fake call"). */

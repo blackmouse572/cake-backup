@@ -8,6 +8,7 @@ import { fetchMe } from "../services/auth.service";
 import { saveSettings, signOutWithCode } from "../services/settings.service";
 import { color, radius, text } from "../theme";
 import { BackBar, Caption, CodeDots, Icon, IconLine, Keypad, Note, PrimaryButton, Screen, Title, type IconName } from "../ui";
+import { CallSettingsView, type CallLook } from "./call-settings";
 import { initialSettings, settingsReducer } from "./settings.reducer";
 
 /**
@@ -17,8 +18,7 @@ import { initialSettings, settingsReducer } from "./settings.reducer";
  * `settingsReducer`; the safety circle (05) and changing the codes open
  * their own screens through the callbacks.
  *
- * The check-in call (14) and disguise (18) rows show "coming soon" until
- * those screens exist (#20, #26).
+ * The disguise (18) row shows "coming soon" until that screen exists (#26).
  */
 export function SettingsFlow(props: SettingsProps) {
   // A new key starts the loader again after a failure.
@@ -84,6 +84,7 @@ function SettingsScreens({ me, onBack, onCircle, onChangeCodes, onSignedOut }: S
   const locale: Locale = isLocale(i18n.language) ? i18n.language : "vi";
   const [state, dispatch] = useReducer(settingsReducer, { policeEnabled: me.policeEnabled }, initialSettings);
   const { view, submit, signedOut } = state;
+  const [look, setLook] = useState<CallLook>({ callerName: me.callerName, vibrateOnly: me.callVibrateOnly });
 
   // Sends the code once four digits are in.
   useEffect(() => {
@@ -109,6 +110,8 @@ function SettingsScreens({ me, onBack, onCircle, onChangeCodes, onSignedOut }: S
       return <LanguageView locale={locale} onChoose={chooseLanguage} onBack={() => dispatch({ type: "back" })} />;
     case "codes":
       return <CodesView onChange={onChangeCodes} onBack={() => dispatch({ type: "back" })} />;
+    case "call":
+      return <CallSettingsView look={look} onChange={setLook} onBack={() => dispatch({ type: "back" })} />;
     case "signOut":
       return (
         <Screen
@@ -132,7 +135,12 @@ function SettingsScreens({ me, onBack, onCircle, onChangeCodes, onSignedOut }: S
 
             <Section title={t("settings.sections.safety")}>
               <Row icon="group" label={t("circle.name")} value={t("settings.people", { count: me.circleSize })} onPress={onCircle} />
-              <Row icon="notifications" label={t("settings.checkInCall")} value={t("settings.soon")} />
+              <Row
+                icon="call"
+                label={t("settings.checkInCall")}
+                value={look.callerName || t("call.defaultCaller")}
+                onPress={() => dispatch({ type: "open", view: "call" })}
+              />
               <Row icon="dialpad" label={t("settings.codes")} onPress={() => dispatch({ type: "open", view: "codes" })} />
               <Row
                 icon="flag"

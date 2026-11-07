@@ -1,8 +1,9 @@
 import { Me } from "@cage/shared";
+import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { api, readData, readError, send, signIn } from "./helpers";
 
-type Settings = { locale?: string; policeEnabled?: boolean };
+type Settings = { locale?: string; policeEnabled?: boolean; callerName?: string; callVibrateOnly?: boolean };
 
 const save = (cookie: string, body: Settings) =>
   api("/me/settings", {
@@ -72,5 +73,53 @@ describe("settings (screen 20)", () => {
 
     expect(res.status).toBe(400);
     expect(await readError(res)).toBe("invalid_request");
+  });
+
+  it("saves the check-in call's caller and ring (screen 14)", async () => {
+    const { cookie } = await signIn();
+    expect(await me(cookie)).toMatchObject({ callerName: "", callVibrateOnly: false });
+
+    expect((await save(cookie, { callerName: "  Công ty ", callVibrateOnly: true })).status).toBe(204);
+    expect(await me(cookie)).toMatchObject({ callerName: "Công ty", callVibrateOnly: true });
+
+    // Empty goes back to the default for the language.
+    await save(cookie, { callerName: "" });
+    expect((await me(cookie)).callerName).toBe("");
+  });
+
+  it("refuses a caller name longer than a phone shows", async () => {
+    const { cookie } = await signIn();
+    expect((await save(cookie, { callerName: "x".repeat(31) })).status).toBe(400);
+  });
+});
+
+const token = (n: number) => ({ token: `ExponentPushToken[test-${n}]`, platform: "android" });
+
+const tokensOf = async (phoneNumber: string) =>
+  (
+    await env.DB.prepare("select count(*) as n from push_tokens t join user u on u.id = t.user_id where u.phone_number = ?")
+      .bind(phoneNumber)
+      .first<{ n: number }>()
+  )?.n;
+
+describe("push tokens (#20)", () => {
+  it("saves the phone's token once, however often the app sends it", async () => {
+    const { cookie, phoneNumber } = await signIn();
+    expect((await send("/me/push-token", "PUT", token(1), { cookie })).status).toBe(204);
+    expect((await send("/me/push-token", "PUT", token(1), { cookie })).status).toBe(204);
+    expect(await tokensOf(phoneNumber)).toBe(1);
+  });
+
+  it("refuses anything that isn't an Expo push token", async () => {
+    const { cookie } = await signIn();
+    const res = await send("/me/push-token", "PUT", { token: "abc", platform: "android" }, { cookie });
+    expect(res.status).toBe(400);
+  });
+
+  it("forgets the phones on sign-out", async () => {
+    const { cookie, phoneNumber } = await signIn();
+    await send("/me/push-token", "PUT", token(2), { cookie });
+    expect((await send("/me/sign-out", "POST", {}, { cookie })).status).toBe(204);
+    expect(await tokensOf(phoneNumber)).toBe(0);
   });
 });

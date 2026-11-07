@@ -31,7 +31,8 @@ export function PlanView({
   busy: boolean;
   problem: PlanProblem | null;
   locale: Locale;
-  onStart: (destination: Place, travelMs: number) => void;
+  /** `route` is the encoded polyline on the map, or null when none could be found; the server watches it (#19). */
+  onStart: (destination: Place, travelMs: number, route: string | null) => void;
   onSettings: () => void;
 }) {
   const { t } = useTranslation();
@@ -81,7 +82,7 @@ export function PlanView({
           label={t("journey.start")}
           busy={busy}
           disabled={!picked || travel === null}
-          onPress={() => picked && travel !== null && onStart(picked, travel)}
+          onPress={() => picked && travel !== null && onStart(picked, travel, route.status === "ready" ? route.route.polyline : null)}
         />
       }
     >

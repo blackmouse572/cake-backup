@@ -28,6 +28,8 @@
     // "console" prints messages to the log. Staging and production use "zalo+sms";
     // the Zalo and SMS settings are listed in src/bindings.ts and .dev.vars.example.
     "MESSAGE_SENDER": "console",
+    // Check-in calls ring the traveller's phone through Expo push ("expo"); "console" prints them.
+    "PUSH_SENDER": "console",
     // Place search and routes (ADR 0004): "fixed" answers from a few made-up
     // places; "goong" needs the GOONG_API_KEY secret.
     "MAPS_PROVIDER": "fixed",
@@ -63,6 +65,7 @@
         // Codes go to the Worker log until the Zalo and SMS settings are in
         // (docs/messaging.md, step 5); then "zalo", then "zalo+sms".
         "MESSAGE_SENDER": "console",
+        "PUSH_SENDER": "expo",
         // "goong" once the GOONG_API_KEY secret is set (docs/deploy.md).
         "MAPS_PROVIDER": "fixed"
       },
@@ -90,6 +93,7 @@
         // Only appears in logged messages; the demo page shows its own link.
         "CIRCLE_WEB_URL": "https://cage-web-demo.workers.dev",
         "MESSAGE_SENDER": "console",
+        "PUSH_SENDER": "expo",
         "MAPS_PROVIDER": "fixed",
         "DEMO_MODE": "on"
       },
@@ -114,6 +118,7 @@
         "CIRCLE_WEB_URL": "https://cage.vn",
         // Plus the Zalo and SMS vars and secrets in docs/messaging.md.
         "MESSAGE_SENDER": "zalo+sms",
+        "PUSH_SENDER": "expo",
         // Needs the GOONG_API_KEY secret.
         "MAPS_PROVIDER": "goong"
       },

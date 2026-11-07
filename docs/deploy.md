@@ -115,6 +115,7 @@ Start only after the GitHub credentials are revoked and the Cloudflare secrets a
 
    Workers Builds installs dependencies with Bun, since `bun.lock` and `packageManager` select it. It runs the D1 migrations before the API deploy, so new code never runs against an old schema. Keep migrations additive, because the old Worker keeps serving until the deploy finishes. Preview builds stay off because preview URLs are off.
 7. **EAS.** In the Expo project, add the `development` environment variables `EXPO_PUBLIC_CF_ACCESS_CLIENT_ID` and `EXPO_PUBLIC_CF_ACCESS_CLIENT_SECRET` from step 5. Then run `cd apps/mobile && eas build --profile development`.
+8. **Push (check-in calls).** The API rings the phone through Expo's push service (`PUSH_SENDER=expo` on staging, demo and production). Run `eas init` in `apps/mobile` once, so `app.json` gets `extra.eas.projectId` (the app needs it for a push token), then `eas credentials` to upload an FCM V1 service account key for Android; EAS makes the iOS push key itself. If you turn on enhanced push security in the Expo project, also set `EXPO_ACCESS_TOKEN` as a Worker secret. Without any of this, check-ins still show in the open app and still alert the circle.
 
 ## Secrets and variables
 
@@ -123,6 +124,7 @@ Start only after the GitHub credentials are revoked and the Cloudflare secrets a
 | `BETTER_AUTH_SECRET` | Worker secret on `cage-api-staging` (later `-production`) | sessions |
 | `CODE_PEPPER` | Worker secret, same | safe code and duress PIN hashes |
 | `GOONG_API_KEY` | Worker secret, same, once `MAPS_PROVIDER` is `"goong"` | place search and routes |
+| `EXPO_ACCESS_TOKEN` | Worker secret, same, only with Expo's enhanced push security on | check-in call pushes |
 | `EXPO_PUBLIC_CF_ACCESS_CLIENT_ID`, `EXPO_PUBLIC_CF_ACCESS_CLIENT_SECRET` | EAS environment `development` | development builds |
 
 Workers Builds authenticates with the Cloudflare account it runs in, so GitHub needs no Cloudflare token.

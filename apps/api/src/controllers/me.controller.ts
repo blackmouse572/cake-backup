@@ -1,5 +1,5 @@
 import { createDb } from "@cage/db";
-import { failure, ResetCodes, SetCodes, SetName, SetSettings, SignOut, success } from "@cage/shared";
+import { failure, ResetCodes, SetCodes, SetName, SetPushToken, SetSettings, SignOut, success } from "@cage/shared";
 import { Hono } from "hono";
 import { requireSession } from "../middleware/require-session";
 import { messageSenderFor } from "../message-sender";
@@ -54,7 +54,13 @@ export const meController = new Hono<AuthedEnv>()
 
     return c.body(null, 204);
   })
-  /** Settings (screen 20): the language, also used for the circle's SMS, and the police switch. */
+  /** The phone's Expo push token, for check-in calls while the app is closed (#20). */
+  .put("/push-token", validate("json", SetPushToken), async (c) => {
+    await meService(createDb(c.env.DB)).savePushToken(c.var.userId, c.req.valid("json"));
+
+    return c.body(null, 204);
+  })
+  /** Settings (screen 20): the language, also used for the circle's SMS, the police switch, and the check-in call (14). */
   .put("/settings", validate("json", SetSettings), async (c) => {
     await meService(createDb(c.env.DB)).updateSettings(c.var.userId, c.req.valid("json"));
 
@@ -72,6 +78,7 @@ export const meController = new Hono<AuthedEnv>()
       case "safe":
       case "no_codes":
         c.executionCtx.waitUntil(sessionsService(c.env).end(c.req.raw.headers));
+        c.executionCtx.waitUntil(meService(createDb(c.env.DB)).forgetPushTokens(c.var.userId));
 
         return c.body(null, 204);
       case "duress":

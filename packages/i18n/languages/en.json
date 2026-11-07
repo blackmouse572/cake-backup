@@ -20,7 +20,12 @@
     "question": "Are you OK?",
     "imSafe": "I'm safe",
     "alertNow": "Alert now",
-    "noAnswer": "If you don't answer, Cage will alert your safety circle."
+    "noAnswer": "If you don't answer, Cage will alert your safety circle.",
+    "why": {
+      "off_route": "You've left your route.",
+      "stopped": "You've been in one place for a while.",
+      "late": "You're past your arrival time."
+    }
   },
   "call": {
     "accept": "Accept",
@@ -28,7 +33,16 @@
     "enterCode": "Enter code to continue",
     "incoming": "Incoming call",
     "mobile": "Mobile",
-    "hangUp": "End call"
+    "hangUp": "End call",
+    "defaultCaller": "Mom",
+    "channelRing": "Calls",
+    "channelVibrate": "Calls, vibrate only",
+    "presets": {
+      "mom": "Mom",
+      "sister": "Sister",
+      "work": "Work",
+      "delivery": "Delivery"
+    }
   },
   "circle": {
     "name": "Safety circle",
@@ -212,6 +226,15 @@
     },
     "people": "{{count}}",
     "checkInCall": "Check-in call",
+    "call": {
+      "caller": "Caller name",
+      "custom": "Custom",
+      "customPlaceholder": "For example: Dad, Tom",
+      "ring": "Alert",
+      "ringOn": "Ring",
+      "vibrateOnly": "Vibrate only",
+      "howItWorks": "Answer, then enter your code. Miss two calls in a row and Cage alerts your circle."
+    },
     "codes": "Safe code and duress code",
     "police": "Alert police",
     "policeWhy": "Off by default, because for people without papers the police can be a risk. Turn it on only if you want it.",

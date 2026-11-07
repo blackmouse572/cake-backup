@@ -4,6 +4,8 @@ export * from "./journey";
 
 export * from "./deadline";
 
+export * from "./check-in";
+
 export * from "./escalation";
 
 export * from "./codes";

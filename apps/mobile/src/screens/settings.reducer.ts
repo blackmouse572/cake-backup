@@ -2,12 +2,12 @@ import { CODE_LENGTH } from "@cage/shared";
 
 /**
  * Settings (screen 20) and what hangs off it: the language (20b, 20c), the
- * codes (20a), the police switch and signing out with the safe code. Pure, so
+ * codes (20a), the check-in call (14), the police switch and signing out with the safe code. Pure, so
  * the flow is tested without React. The safety circle (05) and changing the
  * codes open their own screens, so `App.tsx` handles those.
  */
 
-export type SettingsView = "list" | "language" | "codes" | "signOut";
+export type SettingsView = "list" | "language" | "codes" | "call" | "signOut";
 
 /** Why the last thing didn't work. The server never says whether a code was the safe code or the duress PIN. */
 export type SettingsProblem = "wrong_code" | "too_many_tries" | "error";
