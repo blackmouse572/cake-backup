@@ -223,6 +223,11 @@ export class JourneyObject extends DurableObject<Bindings> {
       state.shownStatus = "check_in";
       state.deadlineAt = checkInDeadline(now);
       await this.save(state);
+    } else if (hiddenDuress(state) && state.shownStatus === "active") {
+      // The circle is already alerted; the phone gets the check-in it would get after the safe code.
+      state.shownStatus = "check_in";
+      state.deadlineAt = checkInDeadline(now);
+      await this.save(state);
     }
 
     return travellerView(state);
@@ -389,6 +394,12 @@ export class JourneyObject extends DurableObject<Bindings> {
   }
 
   private onDeadline(state: JourneyState, now: number): void {
+    if (hiddenDuress(state)) {
+      this.phoneDeadline(state, now);
+
+      return;
+    }
+
     if (state.status === "check_in") {
       this.raiseAlert(state, "no_answer", now);
 
@@ -411,6 +422,33 @@ export class JourneyObject extends DurableObject<Bindings> {
       state.shownStatus = "check_in";
       state.deadlineAt = checkInDeadline(now);
     }
+  }
+
+  /**
+   * A deadline after a hidden duress PIN. The circle is already alerted and
+   * hears nothing new; the phone moves on exactly as it would after the
+   * safe code, so nobody watching it can tell (#50): a check-in at the
+   * arrival deadline (or lost contact if it went quiet), then the alert
+   * screen if that check-in goes unanswered.
+   */
+  private phoneDeadline(state: JourneyState, now: number): void {
+    if (state.shownStatus === "check_in") {
+      state.shownStatus = "alerted";
+
+      return;
+    }
+
+    if (state.shownStatus !== "active") return;
+
+    const next = atArrivalDeadline({
+      now,
+      status: "active",
+      lostContactEnabled: state.lostContactEnabled,
+      lastHeardAt: state.lastHeardAt,
+    });
+
+    state.shownStatus = next === "lost_contact" ? "lost_contact" : "check_in";
+    state.deadlineAt = next === "lost_contact" ? null : checkInDeadline(now);
   }
 
   /**
@@ -554,6 +592,15 @@ export class JourneyObject extends DurableObject<Bindings> {
     if (next === null) await this.ctx.storage.deleteAlarm();
     else await this.ctx.storage.setAlarm(next);
   }
+}
+
+/**
+ * The duress PIN raised the alert and the phone was told nothing: it still
+ * shows the trip going on (or its own check-in), while the circle sees the
+ * alert.
+ */
+function hiddenDuress(state: JourneyState): boolean {
+  return state.status === "alerted" && state.alert?.reason === "duress" && state.shownStatus !== "alerted" && state.shownStatus !== "ended";
 }
 
 /** The journey's next timer: its deadline or the alert's climb to the hotline, whichever comes first. */

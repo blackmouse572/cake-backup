@@ -1069,3 +1069,45 @@ describe("coming back after lost contact", () => {
     expect((await stubFor(journey.id).circleView())?.status).toBe("lost_contact");
   });
 });
+
+describe("the phone after a hidden duress PIN", () => {
+  it("gets a check-in at the next deadline, then the alert screen, as after the safe code, without telling the circle again", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
+    await flush(journey.id);
+
+    await passDeadline(journey.id);
+    expect((await travellerView(journey.id, cookie)).status).toBe("check_in");
+
+    await passDeadline(journey.id);
+    expect((await travellerView(journey.id, cookie)).status).toBe("alerted");
+
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("duress");
+    expect(await alertSteps(journey.id)).toEqual([{ reason: "duress", step: "circle" }]);
+  });
+
+  it("gets the check-in the phone asks for", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await enter(journey.id, "answer", DURESS, cookie);
+
+    const res = await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    expect((await readData(res, JourneyView)).status).toBe("check_in");
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("duress");
+  });
+
+  it("goes back to normal after the duress PIN on that check-in, and the safe code still ends the alert", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await enter(journey.id, "answer", DURESS, cookie);
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+
+    expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
+    expect((await travellerView(journey.id, cookie)).status).toBe("active");
+
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    expect((await enter(journey.id, "answer", SAFE, cookie)).status).toBe(204);
+    expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
+  });
+});
