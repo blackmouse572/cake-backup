@@ -17,7 +17,7 @@
     }
   },
   "checkIn": {
-    "question": "Bạn có an toàn không?",
+    "question": "Bạn có ổn không?",
     "imSafe": "Tôi an toàn",
     "alertNow": "Báo ngay",
     "noAnswer": "Không trả lời, Cage sẽ báo vòng an toàn."
@@ -30,114 +30,91 @@
   "circle": {
     "name": "Vòng an toàn",
     "onboarding": {
-      "title": "Ai sẽ được báo tin?",
-      "body": "Chọn ít nhất 2 người. Họ không cần cài Cage, tin báo đến qua SMS và Zalo."
+      "title": "Báo cho ai khi có chuyện?"
     },
-    "settings": {
-      "title": "Vòng an toàn",
-      "heading": "Ai được báo tin"
-    },
-    "fromContacts": "Từ danh bạ",
-    "add": "Thêm",
-    "empty": "Chưa có ai. Thêm người bạn tin, như người nhà hoặc bạn thân.",
-    "nudge": "Nên thêm một người nữa, tốt nhất ở nơi khác, phòng khi người kia không nghe máy.",
-    "order": "Người ở trên được báo trước.",
-    "moveUp": "Đưa {{name}} lên trên",
-    "moveDown": "Đưa {{name}} xuống dưới",
+    "add": "Thêm người",
+    "nudge": "Nên thêm một người nữa, phòng khi người kia không nghe máy.",
+    "order": "Người ở trên sẽ được báo trước.",
+    "moveUp": "Đưa {{name}} lên",
+    "moveDown": "Đưa {{name}} xuống",
     "remove": "Xóa {{name}}",
     "removeTitle": "Xóa {{name}} khỏi vòng an toàn?",
-    "removeBody": "{{name}} sẽ không được báo tin nữa. Liên kết chuyến đi đã gửi cho người này sẽ ngừng hoạt động.",
-    "ladder": {
-      "heading": "Nếu {{minutes}} không ai trả lời",
-      "hotline": "Tổng đài 111",
-      "hotlineBody": "Miễn phí, 24/7",
-      "ngo": "Blue Dragon",
-      "ngoBody": "Tổ chức giải cứu nạn nhân",
-      "police": "Công an 113",
-      "policeBody": "Tắt sẵn, bật sau trong Cài đặt nếu muốn"
-    },
+    "removeBody": "{{name}} sẽ không nhận tin từ Cage nữa.",
     "errors": {
-      "load": "Không tải được vòng an toàn. Kiểm tra mạng rồi thử lại.",
+      "load": "Không tải được danh sách. Kiểm tra mạng rồi thử lại.",
       "error": "Chưa lưu được. Kiểm tra mạng rồi thử lại.",
-      "invalid_phone": "Số điện thoại chưa đúng. Hãy kiểm tra lại.",
-      "own_number": "Đây là số của bạn. Hãy nhập số của người khác.",
-      "circle_full": "Vòng an toàn đã đủ {{max}} người. Xóa bớt một người để thêm."
+      "invalid_phone": "Số điện thoại chưa đúng.",
+      "own_number": "Đây là số của bạn. Hãy thêm số của người khác.",
+      "circle_full": "Đã đủ {{max}} người. Xóa bớt một người để thêm mới."
     },
     "permission": {
-      "title": "Chọn người từ danh bạ",
-      "body": "Điện thoại sẽ hỏi quyền xem danh bạ.",
-      "onlyPicked": "Cage chỉ lưu những người bạn chọn",
-      "noUpload": "Không tải cả danh bạ lên máy chủ",
-      "quiet": "Người được chọn không bị báo gì cho tới khi có sự cố",
-      "allow": "Cho phép truy cập",
-      "manual": "Nhập số điện thoại",
-      "denied": "Cage chưa được xem danh bạ. Bạn vẫn có thể nhập số điện thoại."
+      "title": "Chọn từ danh bạ",
+      "body": "Cage chỉ lưu những người bạn chọn, không tải cả danh bạ lên.",
+      "allow": "Cho phép",
+      "manual": "Tự nhập số",
+      "denied": "Cage không xem được danh bạ. Bạn có thể tự nhập số."
     },
     "picker": {
       "title": "Chọn từ danh bạ",
-      "selected": "{{count}} đã chọn",
       "search": "Tìm tên hoặc số",
       "favourites": "Yêu thích",
       "all": "Tất cả",
       "inCircle": "Đã có trong vòng an toàn",
       "add": "Thêm {{count}} người",
-      "noMatch": "Không thấy ai khớp với “{{query}}”.",
-      "empty": "Danh bạ chưa có số điện thoại nào.",
-      "loadError": "Không đọc được danh bạ. Bạn vẫn có thể nhập số điện thoại.",
-      "full": "Đã chọn đủ {{max}} người.",
+      "noMatch": "Không tìm thấy “{{query}}”.",
+      "empty": "Danh bạ chưa có số nào.",
+      "loadError": "Không đọc được danh bạ. Bạn có thể tự nhập số.",
+      "full": "Chỉ chọn được tối đa {{max}} người.",
       "deselect": "Bỏ chọn {{name}}"
     },
     "manual": {
-      "title": "Nhập số điện thoại",
-      "body": "Người này nhận tin qua SMS và Zalo, không cần cài Cage.",
+      "title": "Thêm người",
       "name": "Tên gọi",
-      "namePlaceholder": "Ví dụ: Chị Mai",
+      "namePlaceholder": "Tên gọi, ví dụ: Chị Mai",
       "phone": "Số điện thoại",
-      "add": "Thêm vào vòng an toàn"
-    }
+      "add": "Thêm"
+    },
+    "body": "Họ nhận tin qua SMS hoặc Zalo, không cần cài ứng dụng."
   },
   "web": {
-    "tripOf": "Chuyến đi của {{name}}",
     "willArrive": "{{name}} sẽ đến nơi lúc {{time}}",
     "updated": "Cập nhật",
     "battery": "Pin",
     "nextCheckIn": "Kiểm tra",
-    "linkStops": "Liên kết ngừng chia sẻ khi {{name}} đến nơi",
-    "linkEnded": "Chuyến đi này đã kết thúc. Liên kết không còn chia sẻ vị trí.",
+    "linkStops": "Liên kết tự tắt khi {{name}} đến nơi",
+    "linkEnded": "Chuyến đi đã kết thúc. Liên kết không còn chia sẻ vị trí.",
     "statusCheckIn": "Đang kiểm tra",
     "statusAlert": "Cảnh báo · {{time}}",
     "statusDuress": "Cần giúp · {{time}}",
     "statusLost": "Mất kết nối · {{duration}}",
-    "toDestination": "Tới {{destination}}",
-    "liveNote": "Cage sẽ báo bạn ngay nếu {{name}} lệch tuyến hoặc không trả lời cuộc gọi kiểm tra.",
+    "toDestination": "Đang đến {{destination}}",
     "call": "Gọi {{name}}",
     "message": "Nhắn {{name}}",
-    "checkInTitle": "Cage đang hỏi {{name}} có an toàn không",
-    "checkInBody": "Bạn chưa cần làm gì. Cage sẽ báo bạn nếu {{name}} không trả lời.",
-    "checkInAlertAt": "{{time}} · Báo cả vòng an toàn nếu {{name}} chưa trả lời",
+    "checkInTitle": "Cage đang hỏi xem {{name}} có ổn không",
+    "checkInBody": "Bạn chưa cần làm gì. Nếu {{name}} không trả lời, Cage sẽ báo bạn.",
     "alertTitle": {
-      "no_answer": "{{name}} không trả lời cuộc gọi kiểm tra",
+      "no_answer": "{{name}} không nghe cuộc gọi kiểm tra",
       "sos": "{{name}} vừa bấm SOS",
       "duress": "{{name}} vừa nhập mã khẩn cấp"
     },
-    "alertBody": "Vị trí của {{name}} vẫn đang cập nhật. Cả vòng an toàn đã nhận tin lúc {{time}}.",
-    "duressBody": "Trên máy của {{name}}, mọi thứ vẫn như bình thường. {{name}} có thể đang bị người khác theo dõi.",
-    "messageFirst": "Nhắn trước, đừng gọi {{name}} ngay.",
+    "alertBody": "Vị trí của {{name}} vẫn đang được cập nhật.",
+    "duressBody": "Trên máy {{name}}, mọi thứ trông vẫn bình thường. Có thể ai đó đang ở cạnh và theo dõi {{name}}.",
+    "messageFirst": "Nhắn tin trước, đừng gọi ngay.",
     "messageFirstWhy": "Có thể có người lạ đang ở cạnh {{name}}.",
     "doNotContact": "Đừng gọi hay nhắn cho {{name}}.",
-    "doNotContactWhy": "Người bên cạnh có thể thấy.",
+    "doNotContactWhy": "Người bên cạnh có thể nhìn thấy.",
     "hotline": "Tổng đài 111",
     "hotlineNow": "Bây giờ",
     "callHotline": "Gọi Tổng đài 111",
     "callPolice": "Gọi 113",
     "blueDragon": "Blue Dragon",
     "lostTitle": "Cage mất kết nối với {{name}}",
-    "lostBatteryTitle": "Có lẽ điện thoại của {{name}} đã hết pin",
-    "lostBody": "Lần cuối thấy lúc {{time}}, pin còn {{battery}}. {{name}} dự kiến đến nơi lúc {{arrival}}.",
-    "lostBodyNoUpdate": "Cage chưa nhận được vị trí nào. {{name}} dự kiến đến nơi lúc {{arrival}}.",
-    "lostNoPolice": "Cage không tự báo công an hay tổng đài khi chỉ mất kết nối.",
+    "lostBatteryTitle": "Có thể điện thoại của {{name}} đã hết pin",
+    "lostBody": "Thấy lần cuối lúc {{time}}, pin còn {{battery}}. {{name}} dự kiến đến lúc {{arrival}}.",
+    "lostBodyNoUpdate": "Cage chưa nhận được vị trí nào. {{name}} dự kiến đến lúc {{arrival}}.",
     "live": "{{name}} · trực tiếp",
-    "destination": "Điểm đến"
+    "destination": "Điểm đến",
+    "answerBy": "Hạn trả lời"
   },
   "common": {
     "seconds": "{{count}} giây",
@@ -146,7 +123,7 @@
     "back": "Quay lại",
     "continue": "Tiếp tục",
     "delete": "Xóa",
-    "step": "{{step}}/{{total}}",
+    "step": "Bước {{step}}/{{total}}",
     "cancel": "Hủy",
     "close": "Đóng",
     "retry": "Thử lại"
@@ -154,128 +131,100 @@
   "signIn": {
     "phone": {
       "title": "Số điện thoại của bạn",
-      "body": "Cage gửi một mã 6 số để xác nhận. Không cần mật khẩu hay email.",
+      "body": "Bạn sẽ nhận một mã 6 số để đăng nhập.",
       "label": "Số điện thoại",
-      "noCageTitle": "Tin nhắn không có chữ Cage",
-      "noCageBody": "Mã đến như tin xác thực thường.",
-      "onceTitle": "Đăng nhập một lần",
-      "onceBody": "Sau đó Cage không hỏi lại nữa.",
-      "circleTitle": "Người thân không cần tài khoản",
-      "circleBody": "Họ nhận tin qua SMS và Zalo.",
       "sendZalo": "Gửi mã qua Zalo",
-      "sendSms": "Không dùng Zalo? Gửi qua SMS",
+      "sendSms": "Gửi qua SMS",
       "errors": {
-        "invalid": "Số điện thoại chưa đúng. Hãy kiểm tra lại.",
-        "too_many": "Số này đã nhận nhiều mã. Hãy thử lại sau một giờ.",
-        "error": "Không gửi được mã. Kiểm tra mạng rồi thử lại."
+        "invalid": "Số điện thoại chưa đúng.",
+        "too_many": "Số này đã nhận quá nhiều mã. Thử lại sau một giờ.",
+        "error": "Chưa gửi được mã. Kiểm tra mạng rồi thử lại."
       }
     },
     "code": {
       "title": "Nhập mã 6 số",
-      "sentTo": "Đã gửi qua {{channel}} tới",
-      "editNumber": "Sửa số",
+      "sentTo": "Đã gửi qua {{channel}} đến",
+      "editNumber": "Đổi số",
       "resendIn": "Gửi lại sau {{time}}",
       "resend": "Gửi lại mã",
-      "viaSms": "Gửi qua SMS",
-      "previewLabel": "Tin nhắn trông như thế này",
-      "previewSender": "Xác thực",
+      "viaSms": "Nhận qua SMS",
       "errors": {
-        "wrong": "Mã chưa đúng. Hãy nhập lại hoặc gửi mã mới.",
-        "too_many": "Bạn đã thử nhiều lần. Hãy đợi vài phút rồi thử lại.",
+        "wrong": "Mã không đúng. Nhập lại hoặc lấy mã mới.",
+        "too_many": "Bạn đã thử quá nhiều lần. Đợi vài phút rồi thử lại.",
         "error": "Không kết nối được. Kiểm tra mạng rồi thử lại."
       }
     },
     "welcomeBack": {
-      "title": "Chào mừng trở lại",
-      "body": "Số {{phone}} đã dùng Cage trước đây. Mọi cài đặt đã được chuyển sang máy này.",
-      "restored": "Đã khôi phục",
-      "people": "{{count}} người",
-      "codes": "Mã an toàn và mã khẩn cấp",
-      "codesKept": "Giữ nguyên mã cũ",
-      "permissions": "Bạn chỉ cần cấp lại quyền trên máy này."
+      "title": "Chào mừng bạn quay lại",
+      "codes": "Mã của bạn vẫn giữ nguyên",
+      "circle": "{{count}} người trong vòng an toàn"
     }
   },
   "codes": {
-    "enter": "Nhập 4 số, rồi nhập lại để xác nhận",
-    "confirm": "Nhập lại 4 số để xác nhận",
+    "enter": "Nhập 4 số",
+    "confirm": "Nhập lại để xác nhận",
     "safe": {
       "title": "Đặt mã an toàn",
-      "body": "Dùng mã này để báo là bạn ổn, trong ứng dụng và khi Cage gọi kiểm tra."
+      "body": "Nhập mã này mỗi khi Cage hỏi, để báo là bạn vẫn ổn."
     },
     "duress": {
       "title": "Đặt mã khẩn cấp",
-      "body": "Nếu bị ép phải trả lời, hãy nhập mã này. Cage sẽ hiện như bình thường, nhưng âm thầm báo vòng an toàn.",
-      "hint": "Khác mã an toàn ít nhất 2 số, và dễ nhớ cả khi bạn đang sợ."
+      "body": "Khi bị ép nhập mã, hãy dùng mã này. Máy vẫn hiện như bình thường, nhưng vòng an toàn sẽ được báo."
     },
     "errors": {
-      "too_simple": "Mã này dễ đoán quá. Hãy chọn 4 số khác.",
+      "too_simple": "Mã này dễ đoán quá. Hãy chọn mã khác.",
       "too_close": "Mã khẩn cấp phải khác mã an toàn ít nhất 2 số.",
-      "mismatch": "Hai lần nhập chưa khớp. Hãy nhập lại từ đầu.",
+      "mismatch": "Hai lần nhập không khớp. Hãy nhập lại từ đầu.",
       "error": "Chưa lưu được mã. Kiểm tra mạng rồi thử lại.",
-      "journey_open": "Bạn đang có một chuyến đi. Hãy đặt lại mã sau khi chuyến đi kết thúc."
+      "journey_open": "Bạn đang trong chuyến đi. Kết thúc chuyến đi rồi hãy đặt lại mã."
     },
     "forgot": "Quên mã?",
     "reset": {
       "title": "Đặt lại mã",
-      "body": "Cage gửi một mã 6 số tới {{phone}} để biết đó là bạn. Sau đó bạn đặt mã an toàn và mã khẩn cấp mới.",
-      "journeyNote": "Đang đi thì chưa đặt lại được. Nếu quên mã giữa chuyến, cứ để hết giờ, Cage sẽ báo vòng an toàn.",
-      "oldCodesNote": "Mã cũ sẽ không dùng được nữa."
+      "body": "Cage gửi mã 6 số đến {{phone}} để xác nhận là bạn. Sau đó bạn đặt mã mới, mã cũ sẽ hết hiệu lực."
     }
   },
   "messages": {
-    "code": "Mã xác nhận của bạn là {{code}}. Không chia sẻ mã này với ai.",
-    "journeyStarted": "{{name}} vừa bắt đầu chuyến đi tới {{destination}}, dự kiến đến lúc {{time}}. Theo dõi tại {{url}}",
+    "code": "Mã xác nhận của bạn là {{code}}. Đừng chia sẻ mã này cho ai.",
+    "journeyStarted": "{{name}} vừa bắt đầu chuyến đi đến {{destination}}, dự kiến tới lúc {{time}}. Xem tại {{url}}",
     "alert": {
-      "no_answer": "{{name}} không trả lời cuộc gọi kiểm tra. Xem vị trí trực tiếp tại {{url}}. Nhắn trước, đừng gọi ngay.",
-      "duress": "{{name}} vừa nhập mã khẩn cấp. Xem vị trí trực tiếp tại {{url}}. Đừng gọi hay nhắn cho {{name}}, người bên cạnh có thể thấy.",
-      "sos": "{{name}} vừa bấm SOS. Xem vị trí trực tiếp tại {{url}}. Nhắn trước, đừng gọi ngay.",
-      "lost_contact": "Cage mất kết nối với {{name}} sau giờ dự kiến đến nơi. Xem vị trí cuối cùng tại {{url}}"
+      "no_answer": "{{name}} không nghe cuộc gọi kiểm tra. Xem vị trí tại {{url}}. Hãy nhắn tin trước, đừng gọi ngay.",
+      "duress": "{{name}} vừa nhập mã khẩn cấp. Xem vị trí tại {{url}}. Đừng gọi hay nhắn cho {{name}}, người bên cạnh có thể nhìn thấy.",
+      "sos": "{{name}} vừa bấm SOS. Xem vị trí tại {{url}}. Hãy nhắn tin trước, đừng gọi ngay.",
+      "lost_contact": "Cage mất kết nối với {{name}} sau giờ dự kiến đến nơi. Xem vị trí cuối tại {{url}}"
     },
-    "safeNow": "{{name}} đã xác nhận an toàn bằng mã an toàn. Bạn không cần làm gì thêm."
+    "safeNow": "{{name}} đã báo an toàn bằng mã an toàn. Bạn không cần làm gì thêm."
   },
   "demo": {
-    "band": "Máy chủ demo riêng · Tin nhắn chỉ ghi vào nhật ký, không gửi đi · Không có cuộc gọi thật",
+    "band": "Máy chủ demo · Không gửi tin nhắn, không gọi thật",
     "title": "Bảng điều khiển demo",
     "lock": "Khóa",
-    "step1": "Bước 1",
-    "step2": "Bước 2",
     "keyLabel": "Khóa demo",
     "unlock": "Mở khóa",
-    "unlocked": "Đã mở khóa bằng khóa demo",
+    "unlocked": "Đã mở khóa",
     "wrongKey": "Sai khóa demo",
     "locked": "Sai quá nhiều lần. Thử lại sau 15 phút.",
-    "off": "Máy chủ này không bật bản demo.",
-    "safeBecause": "Bản demo này an toàn vì",
-    "safe1Title": "Máy chủ demo riêng.",
-    "safe1": "Máy chủ thật không có trang này.",
-    "safe2Title": "Không gửi tin, không gọi.",
-    "safe2": "Tin nhắn tới vòng an toàn chỉ ghi vào nhật ký.",
-    "safe3Title": "Chỉ tài khoản demo.",
-    "safe3": "Chỉ các số đã được thêm vào danh sách demo mới hiện ở đây.",
-    "safe4Title": "Không thấy mã.",
-    "safe4": "Mã an toàn và mã khẩn cấp chỉ nhập trên điện thoại.",
+    "off": "Máy chủ này chưa bật chế độ demo.",
     "pickTitle": "Chọn người đang đi",
-    "pickBody": "Bắt đầu chuyến đi trong ứng dụng trên điện thoại trước. Người đang có chuyến đi sẽ hiện ở đây.",
-    "pickRow": "Tới {{destination}} · bắt đầu {{time}}",
-    "nobody": "Chưa ai có chuyến đi.",
-    "refreshEvery": "Tự làm mới mỗi 3 giây",
+    "pickBody": "Bắt đầu chuyến đi trên điện thoại trước, người đó sẽ hiện ở đây.",
+    "pickRow": "Đến {{destination}} · từ {{time}}",
+    "nobody": "Chưa có ai đang đi.",
     "tripOf": "Chuyến đi của {{name}}",
-    "chipSafe": "An toàn · đúng tuyến",
-    "chipSafeOff": "An toàn · lệch tuyến",
-    "chipCheckIn": "Gọi kiểm tra · chờ trả lời {{time}}",
-    "chipDuress": "Gặp nguy · mã khẩn cấp lúc {{time}}",
-    "chipNoAnswer": "Gặp nguy · không trả lời lúc {{time}}",
-    "chipLost": "Mất liên lạc lúc {{time}}",
-    "heard": "Điện thoại gửi tin {{seconds}} giây trước",
+    "chipSafe": "Đúng tuyến",
+    "chipSafeOff": "Lệch tuyến",
+    "chipCheckIn": "Chờ trả lời · {{time}}",
+    "chipDuress": "Mã khẩn cấp · {{time}}",
+    "chipNoAnswer": "Không trả lời · {{time}}",
+    "chipLost": "Mất kết nối · {{time}}",
+    "heard": "Tín hiệu {{seconds}} giây trước",
     "switch": "Đổi người",
-    "restart": "Làm lại từ đầu",
+    "restart": "Làm lại",
     "restartConfirm": "Xóa chuyến đi này? Tài khoản và vòng an toàn vẫn giữ nguyên.",
-    "route": "Vị trí mô phỏng",
-    "routeNote": "Thay GPS của điện thoại · gửi mỗi 3 giây",
-    "routeFrom": "Từ nơi {{name}} bắt đầu → {{destination}}",
+    "route": "Lộ trình mô phỏng",
+    "routeFrom": "{{name}} → {{destination}}",
     "routeLeft": "còn {{distance}} · đến lúc {{time}}",
     "routeOff": "Lệch tuyến {{distance}}",
-    "routeOffNote": "dừng ở điểm lệch",
+    "routeOffNote": "đang dừng",
     "pause": "Tạm dừng",
     "resume": "Đi tiếp",
     "goOff": "Đi lệch tuyến",
@@ -283,28 +232,22 @@
     "states": "Trạng thái",
     "running": "Đang chạy",
     "stateSafe": "An toàn",
-    "stateSafeBody": "Đi đúng tuyến. Không ai được báo.",
-    "stateSafeBodyAlert": "Chỉ mã an toàn nhập trên điện thoại mới đưa về bình thường.",
     "stateCall": "Gọi kiểm tra",
-    "stateCallBody": "Điện thoại hỏi “Bạn có ổn không?”.",
-    "stateCallBodyAlert": "Không dùng được khi vòng an toàn đã được báo.",
     "askNow": "Hỏi ngay",
     "stateDanger": "Gặp nguy",
-    "stateDangerBody": "Vòng an toàn được báo, chỉ ghi nhật ký.",
-    "stateDangerDuress": "Mã khẩn cấp nhập trên điện thoại. Vòng an toàn được báo lặng lẽ.",
     "noAnswer": "Không trả lời",
-    "goQuiet": "Điện thoại im lặng",
-    "log": "Nhật ký demo",
-    "notSent": "Tin nhắn không được gửi",
-    "logSms": "SMS tới {{name}} · “{{text}}”",
-    "logOnlyLogged": "chỉ ghi",
+    "goQuiet": "Mất sóng",
+    "log": "Nhật ký",
+    "notSent": "Không gửi thật",
+    "logSms": "SMS đến {{name}} · “{{text}}”",
+    "logOnlyLogged": "Chỉ ghi lại, không gửi",
     "logMove": "Vị trí mô phỏng · còn {{distance}}",
-    "logAsk": "Bảng điều khiển hỏi “Bạn có ổn không?”",
-    "logSkip": "Bảng điều khiển bỏ qua thời gian trả lời",
-    "logQuiet": "Bảng điều khiển làm điện thoại im lặng",
+    "logAsk": "Hỏi “Bạn có ổn không?”",
+    "logSkip": "Bỏ qua thời gian trả lời",
+    "logQuiet": "Giả lập mất sóng",
     "logOff": "Đi lệch tuyến",
     "logOn": "Về đúng tuyến",
-    "byDashboard": "bảng điều khiển",
+    "byDashboard": "Từ bảng điều khiển",
     "trip": "Chuyến đi",
     "to": "Tới {{destination}}",
     "started": "Bắt đầu",
@@ -314,53 +257,48 @@
     "battery": "Pin",
     "circle": "Vòng an toàn",
     "people": "{{count}} người",
-    "circleSees": "Vòng an toàn thấy",
-    "circleNote": "Trang thật của vòng an toàn. Tự làm mới mỗi 3 giây.",
-    "gone": "Chuyến đi này đã kết thúc hoặc bị xóa.",
+    "circleSees": "Vòng an toàn thấy gì",
+    "gone": "Chuyến đi đã kết thúc hoặc bị xóa.",
     "pill": "DEMO",
-    "callsOff": "Bản demo: nút gọi và nhắn bị tắt",
-    "checkWaiting": "{{time}} · đang chờ trả lời"
+    "callsOff": "Bản demo: nút gọi và nhắn đã tắt",
+    "checkWaiting": "{{time}} · đang chờ"
   },
   "plan": {
     "title": "Bạn đi đâu?",
     "destination": "Điểm đến",
     "destinationHint": "Ví dụ: Nhà nghỉ Bờ Sông, Quận 1",
-    "arriveIn": "Bạn sẽ đến nơi trong",
-    "checkNote": "Có gì lạ, Cage sẽ hỏi bạn",
-    "checkNoteBody": "60 giây không trả lời thì báo tin",
-    "notFound": "Không tìm thấy địa chỉ này. Thử ghi rõ hơn, ví dụ thêm quận.",
-    "needLocation": "Cage cần vị trí của bạn để vòng an toàn thấy bạn trong chuyến đi.",
+    "arriveIn": "Thời gian đi",
+    "checkNote": "Có gì bất thường, Cage sẽ hỏi bạn ngay.",
+    "notFound": "Không tìm thấy địa chỉ này. Thử ghi thêm quận, huyện.",
+    "needLocation": "Cage cần quyền vị trí để vòng an toàn thấy bạn trên đường đi.",
     "error": "Chưa bắt đầu được. Kiểm tra mạng rồi thử lại."
   },
   "onRoute": {
-    "arrive": "đến nơi",
-    "left": "còn {{minutes}} phút",
-    "sharing": "Vòng an toàn thấy vị trí của bạn tới khi bạn kết thúc chuyến đi."
+    "arrive": "dự kiến đến",
+    "left": "Còn {{minutes}} phút",
+    "sharing": "Vòng an toàn đang thấy vị trí của bạn"
   },
   "ask": {
-    "body": "Ổn thì nhập mã để đi tiếp. Cần giúp thì báo ngay.",
-    "secondsLeft": "giây để trả lời",
-    "autoAlert": "Hết giờ sẽ tự báo tin."
+    "autoAlert": "Hết giờ mà chưa trả lời, Cage sẽ báo vòng an toàn.",
+    "seconds": "giây"
   },
   "enterCode": {
     "title": "Nhập mã của bạn",
-    "body": "Mã 4 số bạn đã đặt khi cài Cage.",
     "endTitle": "Kết thúc chuyến đi",
-    "endBody": "Nhập mã 4 số. Vòng an toàn sẽ ngừng thấy vị trí của bạn.",
+    "endBody": "Nhập mã để dừng chia sẻ vị trí.",
     "left": "Còn {{count}} giây",
-    "typeFour": "Nhập 4 số",
     "forgot": "Quên mã? Cứ để hết giờ, Cage sẽ báo vòng an toàn.",
-    "wrong": "Sai mã. Thử lại.",
-    "tooMany": "Nhập sai quá nhiều lần."
+    "wrong": "Mã chưa đúng, thử lại.",
+    "tooMany": "Bạn đã nhập sai quá nhiều lần."
   },
   "alerted": {
     "title": "Đã báo vòng an toàn",
-    "body": "Gửi lúc {{time}}. Họ thấy vị trí của bạn cho tới khi bạn an toàn.",
-    "lostTitle": "Cage mất kết nối với bạn",
-    "lostBody": "Vòng an toàn đã được báo. Họ thấy vị trí cuối cùng của bạn."
+    "body": "Họ đang thấy vị trí của bạn. Khi đã ổn, hãy nhập mã.",
+    "lostTitle": "Mất kết nối",
+    "lostBody": "Vòng an toàn đã được báo và thấy vị trí cuối của bạn."
   },
   "arrived": {
-    "title": "Chuyến đi đã kết thúc",
+    "title": "Đã kết thúc chuyến đi",
     "body": "Vòng an toàn không còn thấy vị trí của bạn.",
     "again": "Chuyến đi mới"
   }

@@ -17,7 +17,7 @@
     }
   },
   "checkIn": {
-    "question": "Are you safe?",
+    "question": "Are you OK?",
     "imSafe": "I'm safe",
     "alertNow": "Alert now",
     "noAnswer": "If you don't answer, Cage will alert your safety circle."
@@ -30,99 +30,76 @@
   "circle": {
     "name": "Safety circle",
     "onboarding": {
-      "title": "Who should we tell?",
-      "body": "Pick at least 2 people. They don't need Cage; alerts reach them by SMS and Zalo."
+      "title": "Who should hear if something's wrong?"
     },
-    "settings": {
-      "title": "Safety circle",
-      "heading": "Who gets told"
-    },
-    "fromContacts": "From contacts",
-    "add": "Add",
-    "empty": "No one yet. Add people you trust, like family or a close friend.",
-    "nudge": "Add one more person, ideally somewhere else, in case the first one doesn't answer.",
-    "order": "People at the top are told first.",
+    "add": "Add someone",
+    "nudge": "Add one more person, in case the first doesn't pick up.",
+    "order": "The person at the top hears first.",
     "moveUp": "Move {{name}} up",
     "moveDown": "Move {{name}} down",
     "remove": "Remove {{name}}",
     "removeTitle": "Remove {{name}} from your safety circle?",
-    "removeBody": "{{name}} won't be told anymore. Any trip link they were sent stops working.",
-    "ladder": {
-      "heading": "If no one answers in {{minutes}}",
-      "hotline": "Hotline 111",
-      "hotlineBody": "Free, 24/7",
-      "ngo": "Blue Dragon",
-      "ngoBody": "Rescues trafficking victims",
-      "police": "Police 113",
-      "policeBody": "Off for now; you can turn it on in Settings"
-    },
+    "removeBody": "{{name}} will no longer hear from Cage.",
     "errors": {
-      "load": "Couldn't load your safety circle. Check your connection and try again.",
+      "load": "Couldn't load the list. Check your connection and try again.",
       "error": "Couldn't save. Check your connection and try again.",
-      "invalid_phone": "That phone number doesn't look right. Please check it.",
-      "own_number": "That's your own number. Enter someone else's.",
-      "circle_full": "Your safety circle already has {{max}} people. Remove one to add another."
+      "invalid_phone": "That number doesn't look right.",
+      "own_number": "That's your own number. Add someone else's.",
+      "circle_full": "You already have {{max}} people. Remove one to add someone new."
     },
     "permission": {
-      "title": "Pick people from contacts",
-      "body": "Your phone will ask to let Cage see your contacts.",
-      "onlyPicked": "Cage only keeps the people you pick",
-      "noUpload": "Your contact list is never uploaded",
-      "quiet": "The people you pick hear nothing until something goes wrong",
-      "allow": "Allow access",
-      "manual": "Enter a phone number",
-      "denied": "Cage can't see your contacts. You can still enter a number."
+      "title": "Choose from contacts",
+      "body": "Cage only keeps the people you pick. Your contacts are never uploaded.",
+      "allow": "Allow",
+      "manual": "Type a number",
+      "denied": "Cage can't see your contacts. You can type a number instead."
     },
     "picker": {
       "title": "Pick from contacts",
-      "selected": "{{count}} picked",
       "search": "Search name or number",
       "favourites": "Favourites",
       "all": "All",
       "inCircle": "Already in your safety circle",
       "add": "Add {{count}}",
       "noMatch": "No one matches “{{query}}”.",
-      "empty": "No contacts with a phone number.",
-      "loadError": "Couldn't read your contacts. You can still enter a number.",
-      "full": "You've picked the most you can add ({{max}}).",
+      "empty": "No numbers in your contacts yet.",
+      "loadError": "Couldn't read your contacts. You can type a number instead.",
+      "full": "You can pick up to {{max}} people.",
       "deselect": "Unpick {{name}}"
     },
     "manual": {
-      "title": "Enter a phone number",
-      "body": "They get messages by SMS and Zalo and don't need Cage.",
+      "title": "Add someone",
       "name": "Name",
-      "namePlaceholder": "For example: Mai",
+      "namePlaceholder": "Name, for example: Mai",
       "phone": "Phone number",
-      "add": "Add to safety circle"
-    }
+      "add": "Add"
+    },
+    "body": "They get messages by SMS or Zalo. No app needed."
   },
   "web": {
-    "tripOf": "{{name}}'s trip",
     "willArrive": "{{name}} will arrive at {{time}}",
     "updated": "Updated",
     "battery": "Battery",
     "nextCheckIn": "Check-in",
-    "linkStops": "This link stops sharing when {{name}} arrives",
+    "linkStops": "This link turns off when {{name}} arrives",
     "linkEnded": "This trip has ended. The link no longer shares location.",
     "statusCheckIn": "Checking in",
     "statusAlert": "Alert · {{time}}",
     "statusDuress": "Needs help · {{time}}",
     "statusLost": "Lost contact · {{duration}}",
-    "toDestination": "To {{destination}}",
-    "liveNote": "Cage will tell you straight away if {{name}} goes off route or doesn't answer a check-in call.",
+    "toDestination": "On the way to {{destination}}",
     "call": "Call {{name}}",
     "message": "Message {{name}}",
-    "checkInTitle": "Cage is asking {{name}} if they're safe",
-    "checkInBody": "You don't need to do anything yet. Cage will tell you if {{name}} doesn't answer.",
-    "checkInAlertAt": "{{time}} · The whole circle is told if {{name}} hasn't answered",
+    "checkInTitle": "Cage is checking that {{name}} is OK",
+    "checkInBody": "Nothing to do yet. If {{name}} doesn't answer, Cage will tell you.",
     "alertTitle": {
       "no_answer": "{{name}} didn't answer the check-in call",
       "sos": "{{name}} just pressed SOS",
       "duress": "{{name}} just entered their emergency code"
     },
-    "alertBody": "{{name}}'s location is still updating. The whole circle was told at {{time}}.",
-    "duressBody": "On {{name}}'s phone everything looks normal. Someone may be watching {{name}}.",
-    "messageFirst": "Message first, don't call {{name}} yet.",
+    "alertBody": "{{name}}'s location is still updating.",
+    "duressBody": "On {{name}}'s phone everything looks normal. Someone may be next to {{name}}, watching.",
+    "messageFirst": "Message first, don't call yet.",
     "messageFirstWhy": "A stranger may be next to {{name}}.",
     "doNotContact": "Don't call or message {{name}}.",
     "doNotContactWhy": "Someone next to them may see it.",
@@ -132,12 +109,12 @@
     "callPolice": "Call 113",
     "blueDragon": "Blue Dragon",
     "lostTitle": "Cage lost contact with {{name}}",
-    "lostBatteryTitle": "{{name}}'s phone probably ran out of battery",
-    "lostBody": "Last seen at {{time}} with {{battery}} battery. {{name}} was expected to arrive at {{arrival}}.",
-    "lostBodyNoUpdate": "Cage hasn't received a location yet. {{name}} was expected to arrive at {{arrival}}.",
-    "lostNoPolice": "Cage never tells the police or a hotline about lost contact alone.",
+    "lostBatteryTitle": "{{name}}'s phone may have run out of battery",
+    "lostBody": "Last seen at {{time}} with {{battery}} battery. {{name}} was due at {{arrival}}.",
+    "lostBodyNoUpdate": "Cage hasn't had a location yet. {{name}} was due at {{arrival}}.",
     "live": "{{name}} · live",
-    "destination": "Destination"
+    "destination": "Destination",
+    "answerBy": "Answer by"
   },
   "common": {
     "seconds": "{{count}} sec",
@@ -146,7 +123,7 @@
     "back": "Back",
     "continue": "Continue",
     "delete": "Delete",
-    "step": "{{step}}/{{total}}",
+    "step": "Step {{step}} of {{total}}",
     "cancel": "Cancel",
     "close": "Close",
     "retry": "Try again"
@@ -154,128 +131,100 @@
   "signIn": {
     "phone": {
       "title": "Your phone number",
-      "body": "Cage sends a 6-digit code to confirm it. No password or email.",
+      "body": "You'll get a 6-digit code to sign in.",
       "label": "Phone number",
-      "noCageTitle": "The message never says Cage",
-      "noCageBody": "It looks like any verification code.",
-      "onceTitle": "Sign in once",
-      "onceBody": "Cage won't ask again after this.",
-      "circleTitle": "Your people don't need an account",
-      "circleBody": "They get messages by SMS and Zalo.",
       "sendZalo": "Send code by Zalo",
-      "sendSms": "No Zalo? Send by SMS",
+      "sendSms": "Send by SMS",
       "errors": {
-        "invalid": "That number doesn't look right. Please check it.",
-        "too_many": "This number has had a lot of codes. Try again in an hour.",
+        "invalid": "That number doesn't look right.",
+        "too_many": "This number has had too many codes. Try again in an hour.",
         "error": "Couldn't send the code. Check your connection and try again."
       }
     },
     "code": {
       "title": "Enter the 6-digit code",
       "sentTo": "Sent by {{channel}} to",
-      "editNumber": "Change number",
+      "editNumber": "Change",
       "resendIn": "Resend in {{time}}",
       "resend": "Resend code",
-      "viaSms": "Send by SMS",
-      "previewLabel": "The message looks like this",
-      "previewSender": "Verification",
+      "viaSms": "Get it by SMS",
       "errors": {
-        "wrong": "That code isn't right. Try again or get a new code.",
+        "wrong": "That code isn't right. Try again or get a new one.",
         "too_many": "Too many tries. Wait a few minutes and try again.",
         "error": "Couldn't connect. Check your connection and try again."
       }
     },
     "welcomeBack": {
       "title": "Welcome back",
-      "body": "{{phone}} has used Cage before. Your settings are now on this phone.",
-      "restored": "Restored",
-      "people": "{{count}} people",
-      "codes": "Safe code and duress code",
-      "codesKept": "Your codes stay the same",
-      "permissions": "You only need to allow permissions again on this phone."
+      "codes": "Your codes stay the same",
+      "circle": "{{count}} people in your safety circle"
     }
   },
   "codes": {
-    "enter": "Enter 4 digits, then again to confirm",
-    "confirm": "Enter the 4 digits again to confirm",
+    "enter": "Enter 4 digits",
+    "confirm": "Enter them again to confirm",
     "safe": {
       "title": "Set your safe code",
-      "body": "Use this code to say you're OK, in the app and when Cage calls to check in."
+      "body": "Enter this code whenever Cage asks, to say you're OK."
     },
     "duress": {
       "title": "Set your duress code",
-      "body": "If someone forces you to answer, enter this code. Cage will look normal but quietly alert your safety circle.",
-      "hint": "Make it differ from your safe code in at least 2 digits, and easy to remember even when you're scared."
+      "body": "If someone forces you to enter a code, use this one. The phone looks normal, but your safety circle is told."
     },
     "errors": {
-      "too_simple": "That code is too easy to guess. Choose 4 other digits.",
+      "too_simple": "That code is too easy to guess. Choose another.",
       "too_close": "The duress code must differ from the safe code in at least 2 digits.",
       "mismatch": "The two entries don't match. Start again.",
       "error": "Couldn't save the codes. Check your connection and try again.",
-      "journey_open": "You have a journey in progress. Reset your codes after it ends."
+      "journey_open": "You're on a trip. End it first, then reset your codes."
     },
     "forgot": "Forgot your code?",
     "reset": {
       "title": "Reset your codes",
-      "body": "Cage sends a 6-digit code to {{phone}} to check it's you. Then you set a new safe code and duress code.",
-      "journeyNote": "You can't reset during a journey. If you forget your code mid-journey, let the time run out and Cage will tell your safety circle.",
-      "oldCodesNote": "Your old codes will stop working."
+      "body": "Cage sends a 6-digit code to {{phone}} to check it's you. Then you set new codes and the old ones stop working."
     }
   },
   "messages": {
     "code": "Your verification code is {{code}}. Don't share it with anyone.",
-    "journeyStarted": "{{name}} just started a trip to {{destination}}, expected to arrive at {{time}}. Follow at {{url}}",
+    "journeyStarted": "{{name}} just started a trip to {{destination}}, due at {{time}}. Follow at {{url}}",
     "alert": {
-      "no_answer": "{{name}} didn't answer the check-in call. See their live location at {{url}}. Message first, don't call yet.",
-      "duress": "{{name}} just entered their emergency code. See their live location at {{url}}. Don't call or message {{name}}: someone next to them may see it.",
-      "sos": "{{name}} just pressed SOS. See their live location at {{url}}. Message first, don't call yet.",
-      "lost_contact": "Cage lost contact with {{name}} after their expected arrival time. See their last location at {{url}}"
+      "no_answer": "{{name}} didn't answer a check-in call. See where they are at {{url}}. Message first, don't call yet.",
+      "duress": "{{name}} just entered their emergency code. See where they are at {{url}}. Don't call or message {{name}}: someone next to them may see it.",
+      "sos": "{{name}} just pressed SOS. See where they are at {{url}}. Message first, don't call yet.",
+      "lost_contact": "Cage lost contact with {{name}} after they were due to arrive. Last location at {{url}}"
     },
-    "safeNow": "{{name}} confirmed they're safe with their safe code. You don't need to do anything else."
+    "safeNow": "{{name}} confirmed they're safe with their safe code. Nothing more to do."
   },
   "demo": {
-    "band": "Separate demo server · Messages are only logged, never sent · No real calls",
+    "band": "Demo server · No messages sent, no real calls",
     "title": "Demo dashboard",
     "lock": "Lock",
-    "step1": "Step 1",
-    "step2": "Step 2",
     "keyLabel": "Demo key",
     "unlock": "Unlock",
-    "unlocked": "Unlocked with the demo key",
+    "unlocked": "Unlocked",
     "wrongKey": "Wrong demo key",
     "locked": "Too many wrong tries. Try again in 15 minutes.",
-    "off": "This server doesn't have the demo switched on.",
-    "safeBecause": "This demo is safe because",
-    "safe1Title": "Separate demo server.",
-    "safe1": "The real server has no such page.",
-    "safe2Title": "No messages, no calls.",
-    "safe2": "Messages to the safety circle are only logged.",
-    "safe3Title": "Demo accounts only.",
-    "safe3": "Only numbers on the demo list show up here.",
-    "safe4Title": "No codes.",
-    "safe4": "The safe code and the emergency code are only typed on the phone.",
+    "off": "This server doesn't have demo mode on.",
     "pickTitle": "Choose who is travelling",
-    "pickBody": "Start a trip in the app on the phone first. Anyone on a trip shows up here.",
-    "pickRow": "To {{destination}} · started {{time}}",
-    "nobody": "Nobody is on a trip yet.",
-    "refreshEvery": "Refreshes every 3 seconds",
+    "pickBody": "Start a trip on the phone first. The traveller then shows up here.",
+    "pickRow": "To {{destination}} · since {{time}}",
+    "nobody": "Nobody is travelling yet.",
     "tripOf": "{{name}}'s trip",
-    "chipSafe": "Safe · on route",
-    "chipSafeOff": "Safe · off route",
-    "chipCheckIn": "Check-in call · waiting for an answer {{time}}",
-    "chipDuress": "In danger · emergency code at {{time}}",
-    "chipNoAnswer": "In danger · no answer at {{time}}",
-    "chipLost": "Contact lost at {{time}}",
-    "heard": "Phone last heard {{seconds}} s ago",
+    "chipSafe": "On route",
+    "chipSafeOff": "Off route",
+    "chipCheckIn": "Waiting for answer · {{time}}",
+    "chipDuress": "Emergency code · {{time}}",
+    "chipNoAnswer": "No answer · {{time}}",
+    "chipLost": "Lost contact · {{time}}",
+    "heard": "Signal {{seconds}} s ago",
     "switch": "Change person",
-    "restart": "Start again",
+    "restart": "Start over",
     "restartConfirm": "Delete this trip? The account and safety circle stay.",
-    "route": "Simulated position",
-    "routeNote": "Replaces the phone's GPS · sent every 3 seconds",
-    "routeFrom": "From where {{name}} started → {{destination}}",
+    "route": "Simulated route",
+    "routeFrom": "{{name}} → {{destination}}",
     "routeLeft": "{{distance}} to go · arrives {{time}}",
     "routeOff": "Off route by {{distance}}",
-    "routeOffNote": "stopped where they left the route",
+    "routeOffNote": "stopped",
     "pause": "Pause",
     "resume": "Go on",
     "goOff": "Go off route",
@@ -283,28 +232,22 @@
     "states": "States",
     "running": "Now",
     "stateSafe": "Safe",
-    "stateSafeBody": "On route. Nobody is told.",
-    "stateSafeBodyAlert": "Only the safe code, typed on the phone, brings this back.",
     "stateCall": "Check-in call",
-    "stateCallBody": "The phone asks “Are you OK?”.",
-    "stateCallBodyAlert": "Not available once the safety circle has been told.",
     "askNow": "Ask now",
     "stateDanger": "In danger",
-    "stateDangerBody": "The safety circle is told; messages are only logged.",
-    "stateDangerDuress": "Emergency code typed on the phone. The safety circle was told quietly.",
     "noAnswer": "No answer",
-    "goQuiet": "Phone goes quiet",
-    "log": "Demo log",
-    "notSent": "Messages are not sent",
+    "goQuiet": "Lose signal",
+    "log": "Log",
+    "notSent": "Nothing sent",
     "logSms": "SMS to {{name}} · “{{text}}”",
-    "logOnlyLogged": "logged only",
+    "logOnlyLogged": "Logged only, not sent",
     "logMove": "Simulated position · {{distance}} to go",
-    "logAsk": "Dashboard asks “Are you OK?”",
-    "logSkip": "Dashboard skips the time to answer",
-    "logQuiet": "Dashboard makes the phone go quiet",
+    "logAsk": "Asked “Are you OK?”",
+    "logSkip": "Skipped the answer time",
+    "logQuiet": "Simulated lost signal",
     "logOff": "Went off route",
     "logOn": "Back on route",
-    "byDashboard": "dashboard",
+    "byDashboard": "From the dashboard",
     "trip": "Trip",
     "to": "To {{destination}}",
     "started": "Started",
@@ -314,53 +257,48 @@
     "battery": "Battery",
     "circle": "Safety circle",
     "people": "{{count}} people",
-    "circleSees": "What the safety circle sees",
-    "circleNote": "The safety circle's real page. Refreshes every 3 seconds.",
+    "circleSees": "What the circle sees",
     "gone": "This trip has ended or was deleted.",
     "pill": "DEMO",
     "callsOff": "Demo: call and message buttons are off",
-    "checkWaiting": "{{time}} · waiting for an answer"
+    "checkWaiting": "{{time}} · waiting"
   },
   "plan": {
     "title": "Where are you going?",
     "destination": "Destination",
     "destinationHint": "For example: Bờ Sông guesthouse, District 1",
-    "arriveIn": "You'll arrive in",
-    "checkNote": "If something looks wrong, Cage will ask you",
-    "checkNoteBody": "No answer in 60 seconds and your circle is told",
-    "notFound": "Couldn't find that address. Try adding more, like the district.",
-    "needLocation": "Cage needs your location so your circle can see you during the trip.",
+    "arriveIn": "Travel time",
+    "checkNote": "If anything looks wrong, Cage will ask you straight away.",
+    "notFound": "Couldn't find that address. Try adding the district.",
+    "needLocation": "Cage needs your location so your circle can see you on the way.",
     "error": "Couldn't start. Check your connection and try again."
   },
   "onRoute": {
     "arrive": "arrival",
     "left": "{{minutes}} min left",
-    "sharing": "Your circle sees your location until you end the trip."
+    "sharing": "Your safety circle can see where you are"
   },
   "ask": {
-    "body": "If you're OK, enter your code to carry on. If you need help, alert now.",
-    "secondsLeft": "seconds to answer",
-    "autoAlert": "When time runs out, your circle is told."
+    "autoAlert": "If time runs out, Cage tells your safety circle.",
+    "seconds": "seconds"
   },
   "enterCode": {
     "title": "Enter your code",
-    "body": "The 4-digit code you set when you installed Cage.",
     "endTitle": "End the trip",
-    "endBody": "Enter your 4-digit code. Your circle will stop seeing your location.",
+    "endBody": "Enter your code to stop sharing your location.",
     "left": "{{count}} seconds left",
-    "typeFour": "Enter 4 digits",
     "forgot": "Forgot your code? Let the time run out and Cage will tell your circle.",
     "wrong": "Wrong code. Try again.",
     "tooMany": "Too many wrong codes."
   },
   "alerted": {
     "title": "Your circle has been told",
-    "body": "Sent at {{time}}. They see your location until you're safe.",
-    "lostTitle": "Cage lost contact with you",
-    "lostBody": "Your circle has been told. They see your last location."
+    "body": "They can see where you are. When you're OK, enter your code.",
+    "lostTitle": "Lost contact",
+    "lostBody": "Your safety circle was told and can see your last location."
   },
   "arrived": {
-    "title": "Your trip has ended",
+    "title": "Trip ended",
     "body": "Your circle no longer sees your location.",
     "again": "New trip"
   }

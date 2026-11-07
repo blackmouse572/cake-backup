@@ -7,7 +7,7 @@ describe("circle messages", () => {
   it("tells the circle a journey started, with the link and the arrival time in Vietnam", () => {
     const arriveAt = Date.UTC(2026, 10, 5, 14, 58);
     const text = messageText({ kind: "journey_started", name: "Lan", destination: "Nhà nghỉ Bờ Sông", arriveAt, url }, "vi");
-    expect(text).toBe(`Lan vừa bắt đầu chuyến đi tới Nhà nghỉ Bờ Sông, dự kiến đến lúc 21:58. Theo dõi tại ${url}`);
+    expect(text).toBe(`Lan vừa bắt đầu chuyến đi đến Nhà nghỉ Bờ Sông, dự kiến tới lúc 21:58. Xem tại ${url}`);
   });
 
   it("asks the circle not to contact the traveller after the duress PIN", () => {

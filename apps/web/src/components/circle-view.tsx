@@ -75,14 +75,11 @@ function SheetContent({ journey, locale, now }: ViewProps) {
   }
 }
 
-function Head({ chip, chipClass, title, body, name }: { chip: string; chipClass: string; title: string; body: string; name: string }) {
-  const { t } = useTranslation();
-
+function Head({ chip, chipClass, title, body }: { chip: string; chipClass: string; title: string; body: string }) {
   return (
     <>
       <div className="row">
         <span className={`cd-chip ${chipClass}`}>{chip}</span>
-        <span className="cap">{t("web.tripOf", { name })}</span>
       </div>
       <h1 className="hp">{title}</h1>
       <p className="cap">{body}</p>
@@ -169,7 +166,6 @@ function OnRoute({ journey, locale, now }: ViewProps) {
         chipClass="cd-chip--success"
         title={t("web.willArrive", { name, time: arrival })}
         body={t("web.toDestination", { destination: journey.destination.name })}
-        name={name}
       />
       <Stats
         journey={journey}
@@ -177,7 +173,6 @@ function OnRoute({ journey, locale, now }: ViewProps) {
         now={now}
         third={{ label: t("web.nextCheckIn"), value: journey.nextDeadlineAt ? formatTime(journey.nextDeadlineAt, locale) : "–" }}
       />
-      <Note icon="notifications" rest={t("web.liveNote", { name })} />
       <div className="pair">
         <Button href={tel(journey.travellerPhone)} icon="call">
           {t("web.call", { name })}
@@ -206,16 +201,12 @@ function CheckIn({ journey, locale, now }: ViewProps) {
         chipClass="cd-chip--warning"
         title={t("web.checkInTitle", { name })}
         body={t("web.checkInBody", { name })}
-        name={name}
       />
-      {journey.nextDeadlineAt ? (
-        <Note icon="notifications" rest={t("web.checkInAlertAt", { name, time: formatTime(journey.nextDeadlineAt, locale) })} />
-      ) : null}
       <Stats
         journey={journey}
         locale={locale}
         now={now}
-        third={{ label: t("web.nextCheckIn"), value: journey.nextDeadlineAt ? formatTime(journey.nextDeadlineAt, locale) : "–" }}
+        third={{ label: t("web.answerBy"), value: journey.nextDeadlineAt ? formatTime(journey.nextDeadlineAt, locale) : "–" }}
       />
       <Button href={sms(journey.travellerPhone)} icon="chat">
         {t("web.message", { name })}
@@ -244,8 +235,7 @@ function Alerted({ journey, locale, now }: ViewProps) {
         chip={t("web.statusAlert", { time: raisedAt })}
         chipClass="cd-chip--danger"
         title={t(`web.alertTitle.${reason}`, { name })}
-        body={t("web.alertBody", { name, time: raisedAt })}
-        name={name}
+        body={t("web.alertBody", { name })}
       />
       <Stats
         journey={journey}
@@ -282,7 +272,6 @@ function Duress({ journey, locale, now }: ViewProps) {
         chipClass="cd-chip--danger"
         title={t("web.alertTitle.duress", { name })}
         body={t("web.duressBody", { name })}
-        name={name}
       />
       <Stats
         journey={journey}
@@ -330,9 +319,7 @@ function LostContact({ journey, locale, now }: ViewProps) {
         chipClass="cd-chip--warning"
         title={journey.likelyBatteryDied ? t("web.lostBatteryTitle", { name }) : t("web.lostTitle", { name })}
         body={body}
-        name={name}
       />
-      <Note icon="block" rest={t("web.lostNoPolice")} />
       <div className="pair">
         <Button href={tel(journey.travellerPhone)} icon="call">
           {t("web.call", { name })}
