@@ -140,6 +140,7 @@ export class JourneyObject extends DurableObject<Bindings> {
    * Takes an update only with this journey's token, and only while the
    * journey runs: the token dies when the journey ends. An unknown journey
    * gets the same answer as a wrong token, so a token can't probe for ids.
+   * An update after lost contact means the phone is back (#23).
    */
   async update(update: LocationUpdate, tokenHash: string, now = Date.now()): Promise<JourneyView | UpdateRefused> {
     const state = await this.load();
@@ -149,7 +150,14 @@ export class JourneyObject extends DurableObject<Bindings> {
     state.lastHeardAt = now;
 
     if (!state.simulated) state.lastUpdate = update;
-    await this.ctx.storage.put(STATE, state);
+
+    // On the demo the dashboard drives the traveller, so the phone's own updates never bring it back.
+    if (state.shownStatus === "lost_contact" && !state.simulated) {
+      this.backOnline(state, now);
+      await this.save(state);
+    } else {
+      await this.ctx.storage.put(STATE, state);
+    }
 
     return travellerView(state);
   }
@@ -424,6 +432,30 @@ export class JourneyObject extends DurableObject<Bindings> {
       state.shownStatus = "check_in";
       state.deadlineAt = checkInDeadline(now);
     }
+  }
+
+  /**
+   * The phone is heard from again after it showed lost contact (screen 16):
+   * it goes back to active and the server checks in once the buffer passes
+   * again, since the traveller is late. If the journey really is in lost
+   * contact, the alert ends and the circle is told. A duress PIN entered
+   * meanwhile (changing codes, signing out) keeps its alert, but the phone
+   * looks exactly as it would after the safe code.
+   */
+  private backOnline(state: JourneyState, now: number): void {
+    state.shownStatus = "active";
+    state.deadlineAt = Math.max(arrivalDeadline(state.expectedArrivalAt), now + TIMERS.arrivalBufferMs);
+
+    if (state.status !== "lost_contact") return;
+    state.status = "active";
+    state.alert = null;
+    state.ladderAt = null;
+
+    // A lost-contact alert not sent yet is dropped instead: the circle never heard, so there is nothing to undo.
+    const unsent = state.outbox.some((notice) => notice.kind === "alert");
+    state.outbox = state.outbox.filter((notice) => notice.kind !== "alert");
+
+    if (!unsent) state.outbox.push({ kind: "back_online" });
   }
 
   /**

@@ -251,6 +251,7 @@
     },
     "lostContactBattery": "Cage mất kết nối với {{name}} sau giờ dự kiến đến nơi. Điện thoại có thể đã hết pin, vì lần cập nhật cuối chỉ còn rất ít. Xem vị trí cuối tại {{url}}",
     "safeNow": "{{name}} đã báo an toàn bằng mã an toàn. Bạn không cần làm gì thêm.",
+    "backOnline": "Cage đã kết nối lại với {{name}}. Điện thoại đang gửi vị trí trở lại. Xem tại {{url}}",
     "codesReset": "{{name}} vừa đặt lại mã trên Cage. Nếu {{name}} chưa nhắc gì về việc này, hãy gọi hỏi thăm {{name}}."
   },
   "demo": {
