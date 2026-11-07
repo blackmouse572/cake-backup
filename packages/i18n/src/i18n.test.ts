@@ -60,6 +60,12 @@ describe("copy rules", () => {
     expect(bad).toEqual([]);
   });
 
+  it("the fake call's caller names never give Cage away", () => {
+    const banned = /cage|an toàn|cảnh báo|công an/i;
+    const bad = strings(catalogs.vi.fakeCall.callers).filter(([, s]) => banned.test(s));
+    expect(bad).toEqual([]);
+  });
+
   it("every locale has the same keys", () => {
     expect(keys(catalogs.en)).toEqual(keys(catalogs.vi));
   });

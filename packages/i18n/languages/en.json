@@ -25,7 +25,10 @@
   "call": {
     "accept": "Accept",
     "decline": "Decline",
-    "enterCode": "Enter code to continue"
+    "enterCode": "Enter code to continue",
+    "incoming": "Incoming call",
+    "mobile": "Mobile",
+    "hangUp": "End call"
   },
   "circle": {
     "name": "Safety circle",
@@ -351,6 +354,22 @@
     "sosHint": "Hold for 1 second to alert your safety circle at once",
     "sosSending": "Alerting your safety circle",
     "sosFailed": "Couldn't send the SOS. Check your connection and hold again."
+  },
+  "fakeCall": {
+    "open": "Fake call",
+    "title": "Who's calling you?",
+    "body": "Your phone rings like a real call, so you have a reason to leave.",
+    "caller": "Caller",
+    "typed": "Another name",
+    "delay": "Ring in",
+    "schedule": "Set up the call",
+    "waiting": "{{name}} calls in {{count}} sec",
+    "callers": {
+      "mom": "Mom",
+      "dad": "Dad",
+      "sister": "Sister",
+      "boss": "Boss"
+    }
   },
   "ask": {
     "autoAlert": "If time runs out, Cage tells your safety circle.",
