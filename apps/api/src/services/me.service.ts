@@ -1,5 +1,5 @@
 import type { Db } from "@cage/db";
-import type { Me } from "@cage/shared";
+import type { Me, SetSettings } from "@cage/shared";
 import { travellerSettingsRepository } from "../repositories/traveller-settings.repository";
 import { usersRepository } from "../repositories/users.repository";
 
@@ -23,7 +23,13 @@ export function meService(db: Db) {
         hasCodes: Boolean(row?.safeCodeHash && row.duressCodeHash),
         circleSize,
         locale: row?.locale ?? "vi",
+        policeEnabled: row?.policeEnabled ?? false,
       };
+    },
+
+    /** The app's language and the police switch (screen 20). */
+    updateSettings(userId: string, changes: SetSettings): Promise<void> {
+      return settings.save(userId, changes);
     },
 
     setName(userId: string, name: string): Promise<void> {

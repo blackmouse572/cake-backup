@@ -10,6 +10,14 @@ export function travellerSettingsRepository(db: Db) {
       return db.query.travellerSettings.findFirst({ where: eq(travellerSettings.userId, userId) });
     },
 
+    /** Saves what changed. The row may not exist yet: it is created when the codes are set or the first setting is saved. */
+    async save(userId: string, settings: Partial<Pick<TravellerSettings, "locale" | "policeEnabled">>): Promise<void> {
+      await db
+        .insert(travellerSettings)
+        .values({ userId, ...settings })
+        .onConflictDoUpdate({ target: travellerSettings.userId, set: settings });
+    },
+
     async saveCodeHashes(userId: string, hashes: { safeCodeHash: string; duressCodeHash: string }): Promise<void> {
       const values = { ...hashes, codeFailures: 0, codeFailedAt: null };
       await db

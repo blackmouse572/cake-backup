@@ -1,14 +1,15 @@
-import { formatTime, isLocale, LOCALES, type Locale } from "@cage/i18n";
+import { formatTime, isLocale, type Locale } from "@cage/i18n";
 import { CODE_LENGTH, TIMERS, type JourneyView } from "@cage/shared";
 import { layout, space } from "@cage/ui-tokens";
 import { useEffect, useReducer, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { DEMO } from "../auth";
-import { setLocale, useTranslation } from "../i18n";
+import { useTranslation } from "../i18n";
 import { currentJourney, enterCode, fetchJourney, forgetJourney, sendUpdate, startJourney } from "../services/journey.service";
 import { allowLocation, findPlace, watchReadings } from "../services/places.service";
+import { saveSettings } from "../services/settings.service";
 import { color, radius, text } from "../theme";
-import { BackBar, Caption, CodeDots, Icon, IconButton, IconLine, Keypad, Note, PrimaryButton, Screen, Title } from "../ui";
+import { BackBar, Caption, CodeDots, Icon, IconLine, Keypad, Note, PrimaryButton, Screen, Title } from "../ui";
 import { initialJourneyFlow, journeyReducer, type CodeEntry, type JourneyAction } from "./journey.reducer";
 
 /** How often the open app asks the server what to show (a check-in, an alert). Quicker in the demo build, so the stage keeps up with the dashboard. */
@@ -34,7 +35,7 @@ const SECOND_MS = 1_000;
  * Without a map provider yet (#15), screen 01 takes a typed address and an
  * arrival time, and the phone's own geocoder finds it.
  */
-export function JourneyFlow({ onCircle }: { onCircle: () => void }) {
+export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
   const { i18n } = useTranslation();
   const locale: Locale = isLocale(i18n.language) ? i18n.language : "vi";
   const [state, dispatch] = useReducer(journeyReducer, initialJourneyFlow);
@@ -108,6 +109,9 @@ export function JourneyFlow({ onCircle }: { onCircle: () => void }) {
 
     if (!place) return dispatch({ type: "startFailed", problem: "not_found" });
 
+    // The server picks the circle's language from settings, so it must know the one on screen now. Failing to say isn't a reason not to start.
+    await saveSettings({ locale });
+
     const started = await startJourney({
       destination: { name: destination.trim(), ...place },
       expectedArrivalAt: Date.now() + minutes * MINUTE_MS,
@@ -121,7 +125,7 @@ export function JourneyFlow({ onCircle }: { onCircle: () => void }) {
 
   switch (state.name) {
     case "plan":
-      return <PlanView busy={state.busy} problem={state.problem} locale={locale} onStart={start} onCircle={onCircle} />;
+      return <PlanView busy={state.busy} problem={state.problem} onStart={start} onSettings={onSettings} />;
     case "ended":
       return <EndedView onNewTrip={() => dispatch({ type: "newTrip" })} />;
     case "travelling":
@@ -149,15 +153,13 @@ function useNow(on: boolean): number {
 function PlanView({
   busy,
   problem,
-  locale,
   onStart,
-  onCircle,
+  onSettings,
 }: {
   busy: boolean;
   problem: "not_found" | "need_location" | "error" | null;
-  locale: Locale;
   onStart: (destination: string, minutes: number) => void;
-  onCircle: () => void;
+  onSettings: () => void;
 }) {
   const { t } = useTranslation();
   const [destination, setDestination] = useState("");
@@ -178,14 +180,10 @@ function PlanView({
     >
       <View style={styles.top}>
         <Text style={text("brandHeader")}>{t("app.name")}</Text>
-        <View style={styles.topActions}>
-          <IconButton
-            icon="translate"
-            label={t("common.language")}
-            onPress={() => setLocale(LOCALES.find((l) => l !== locale) ?? locale)}
-          />
-          <IconButton icon="group" label={t("circle.name")} onPress={onCircle} />
-        </View>
+        {/* A text button until the icon font has a gear. */}
+        <Pressable accessibilityRole="button" onPress={onSettings} hitSlop={8}>
+          <Text style={text("body")}>{t("settings.title")}</Text>
+        </Pressable>
       </View>
       <Title>{t("plan.title")}</Title>
       <View style={styles.input}>
@@ -343,7 +341,6 @@ function EndedView({ onNewTrip }: { onNewTrip: () => void }) {
 
 const styles = StyleSheet.create({
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space[5] },
-  topActions: { flexDirection: "row", gap: space[2] },
   input: {
     marginTop: space[5],
     height: layout.buttonHeight.lg + 8,

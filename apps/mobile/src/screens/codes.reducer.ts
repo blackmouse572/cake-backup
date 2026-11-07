@@ -2,14 +2,29 @@ import { CODE_LENGTH, differingDigits, isTooSimple } from "@cage/shared";
 
 /**
  * The state of screens 10 and 10b: the safe code, then the duress PIN, each
- * typed twice on the keypad. Pure, so the whole flow is tested without React.
+ * typed twice on the keypad. Changing the codes (20a) first asks for the
+ * current safe code, once; the server is the only one that can judge it.
+ * Pure, so the whole flow is tested without React.
  */
 
-/** `journey_open` only comes from the forgot-code path, which is refused during a journey. */
-export type CodesProblem = "too_simple" | "too_close" | "mismatch" | "journey_open" | "error";
+/**
+ * `journey_open` only comes from the forgot-code path, which is refused during a journey.
+ * `wrong_code` and `too_many_tries` only come from changing the codes.
+ */
+export type CodesProblem =
+  | "too_simple"
+  | "too_close"
+  | "mismatch"
+  | "journey_open"
+  | "wrong_code"
+  | "too_many_tries"
+  | "error";
 
 export interface CodesState {
-  step: "safe" | "duress";
+  /** "current" is the safe code being replaced, asked for only when changing the codes. */
+  step: "current" | "safe" | "duress";
+  /** The current safe code, once typed (changing the codes only). */
+  current: string | null;
   /** The confirmed safe code, once step is "duress". */
   safe: string;
   /** The first entry, waiting to be typed again. */
@@ -17,18 +32,19 @@ export interface CodesState {
   /** Digits typed so far. */
   entry: string;
   problem: CodesProblem | null;
-  /** Both codes are confirmed and should be saved. */
-  submit: { safe: string; duress: string } | null;
+  /** Both codes are confirmed and should be saved. `current` is there only when changing the codes. */
+  submit: { safe: string; duress: string; current?: string } | null;
 }
 
 export type CodesAction =
   | { type: "digit"; digit: string }
   | { type: "delete" }
   | { type: "back" }
-  | { type: "saveFailed"; problem: "too_simple" | "too_close" | "journey_open" | "error" };
+  | { type: "saveFailed"; problem: "too_simple" | "too_close" | "journey_open" | "wrong_code" | "too_many_tries" | "error" };
 
 export const initialCodesState: CodesState = {
   step: "safe",
+  current: null,
   safe: "",
   first: null,
   entry: "",
@@ -36,10 +52,15 @@ export const initialCodesState: CodesState = {
   submit: null,
 };
 
+/** Where changing the codes starts: with the safe code they have now. */
+export const changeCodesState: CodesState = { ...initialCodesState, step: "current" };
+
 const fail = (s: CodesState, problem: CodesProblem): CodesState => ({ ...s, first: null, entry: "", problem });
 
 /** A complete four-digit entry: the first time it is checked, the second time it must match. */
 function complete(s: CodesState, code: string): CodesState {
+  if (s.step === "current") return { ...s, step: "safe", current: code, entry: "", problem: null };
+
   if (s.first === null) {
     if (isTooSimple(code)) return fail(s, "too_simple");
 
@@ -50,9 +71,11 @@ function complete(s: CodesState, code: string): CodesState {
 
   if (code !== s.first) return fail(s, "mismatch");
 
-  if (s.step === "safe") return { ...initialCodesState, step: "duress", safe: code };
+  if (s.step === "safe") return { ...initialCodesState, current: s.current, step: "duress", safe: code };
 
-  return { ...s, entry: code, problem: null, submit: { safe: s.safe, duress: code } };
+  const codes = { safe: s.safe, duress: code };
+
+  return { ...s, entry: code, problem: null, submit: s.current === null ? codes : { ...codes, current: s.current } };
 }
 
 export function codesReducer(s: CodesState, a: CodesAction): CodesState {
@@ -67,10 +90,13 @@ export function codesReducer(s: CodesState, a: CodesAction): CodesState {
     case "delete":
       return s.submit ? s : { ...s, entry: s.entry.slice(0, -1) };
     case "back":
-      return s.step === "duress" ? initialCodesState : s;
+      return s.step === "duress" ? { ...initialCodesState, current: s.current } : s;
     case "saveFailed":
+      // The server didn't take the current safe code: ask for it again.
+      if (a.problem === "wrong_code" || a.problem === "too_many_tries") return { ...changeCodesState, problem: a.problem };
+
       // The server disagreed about the safe code: start again from it.
-      if (a.problem === "too_simple") return fail(initialCodesState, a.problem);
+      if (a.problem === "too_simple") return fail({ ...initialCodesState, current: s.current }, a.problem);
 
       return { ...fail(s, a.problem), submit: null };
   }
