@@ -913,7 +913,8 @@ describe("the escalation ladder", () => {
 
   it("doesn't send the circle a second alert for the same reason", async () => {
     const { journey, cookie } = await startJourney();
-    expect((await enter(journey.id, "end", DURESS, cookie)).status).toBe(204);
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
     await flush(journey.id);
     await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
     expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
@@ -1164,5 +1165,87 @@ describe("coming back after lost contact", () => {
     await sendUpdate(journey.id, journeyToken);
 
     expect((await stubFor(journey.id).circleView())?.status).toBe("lost_contact");
+  });
+});
+
+describe("the phone after a hidden duress PIN", () => {
+  it("gets a check-in at the next deadline, then the alert screen, as after the safe code, without telling the circle again", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
+    await flush(journey.id);
+
+    await passDeadline(journey.id);
+    expect((await travellerView(journey.id, cookie)).status).toBe("check_in");
+
+    await passDeadline(journey.id);
+    expect((await travellerView(journey.id, cookie)).status).toBe("alerted");
+
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("duress");
+    expect(await alertSteps(journey.id)).toEqual([{ reason: "duress", step: "circle" }]);
+  });
+
+  it("gets the check-in the phone asks for", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await enter(journey.id, "answer", DURESS, cookie);
+
+    const res = await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    expect((await readData(res, JourneyView)).status).toBe("check_in");
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("duress");
+  });
+
+  it("goes back to normal after the duress PIN on that check-in, and the safe code still ends the alert", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await enter(journey.id, "answer", DURESS, cookie);
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+
+    expect((await enter(journey.id, "answer", DURESS, cookie)).status).toBe(204);
+    expect((await travellerView(journey.id, cookie)).status).toBe("active");
+
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    expect((await enter(journey.id, "answer", SAFE, cookie)).status).toBe(204);
+    expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
+  });
+
+  it("shows the alert screen after too many wrong codes on that check-in, as after the safe code", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await enter(journey.id, "answer", DURESS, cookie);
+    await flush(journey.id);
+    await passDeadline(journey.id);
+    await lockOut(journey.id, "answer", cookie);
+
+    const view = await travellerView(journey.id, cookie);
+    expect(view.status).toBe("alerted");
+    expect(view.nextDeadlineAt).toBeNull();
+    await flush(journey.id);
+    expect(await alertSteps(journey.id)).toEqual([{ reason: "duress", step: "circle" }]);
+  });
+
+  it("shows SOS on the phone as it would after the safe code, while the circle keeps the duress alert", async () => {
+    const { journey, cookie } = await startJourney();
+    await api(`/journeys/${journey.id}/check-in`, { method: "POST", headers: { cookie } });
+    await enter(journey.id, "answer", DURESS, cookie);
+
+    const res = await api(`/journeys/${journey.id}/sos`, { method: "POST", headers: { cookie } });
+    expect((await readData(res, JourneyView)).status).toBe("alerted");
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("duress");
+  });
+
+  it("answers like an ended journey after ending with the duress PIN", async () => {
+    const safe = await startJourney();
+    const duress = await startJourney();
+    expect((await enter(safe.journey.id, "end", SAFE, safe.cookie)).status).toBe(204);
+    expect((await enter(duress.journey.id, "end", DURESS, duress.cookie)).status).toBe(204);
+
+    for (const { journey, journeyToken, cookie } of [safe, duress]) {
+      expect((await sendUpdate(journey.id, journeyToken)).status).toBe(401);
+      expect((await enter(journey.id, "answer", SAFE, cookie)).status).toBe(404);
+      expect((await api(`/journeys/${journey.id}/sos`, { method: "POST", headers: { cookie } })).status).toBe(404);
+    }
+
+    expect((await stubFor(duress.journey.id).circleView())?.alert?.reason).toBe("duress");
   });
 });
