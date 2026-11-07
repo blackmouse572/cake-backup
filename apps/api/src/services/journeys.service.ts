@@ -3,11 +3,15 @@ import type { JourneyView, LocationUpdate, StartedJourney, StartJourney } from "
 import type { CodeResult, JourneyObject, UpdateRefused } from "../journey-object";
 import { journeysRepository } from "../repositories/journeys.repository";
 import { travellerSettingsRepository } from "../repositories/traveller-settings.repository";
+import { JOURNEY_STARTS } from "../constants";
 import { hashToken, newJourneyToken } from "../utils";
 import { checkCode } from "./codes.service";
 
-/** A journey can't start before the safe code exists: nothing could end it or answer a check-in. */
-export type StartResult = StartedJourney | "no_codes";
+/**
+ * A journey can't start before the safe code exists: nothing could end it or
+ * answer a check-in. Nor after `JOURNEY_STARTS.perWindow` starts in the window.
+ */
+export type StartResult = StartedJourney | "no_codes" | "too_many";
 
 /**
  * Journeys: the Durable Object holds the live state, timers and the journey
@@ -39,6 +43,10 @@ export function journeysService(db: Db, objects: DurableObjectNamespace<JourneyO
       const row = await settings.find(userId);
 
       if (!row?.safeCodeHash || !row.duressCodeHash) return "no_codes";
+
+      const since = new Date(Date.now() - JOURNEY_STARTS.windowMs);
+
+      if ((await repo.countStartedSince(userId, since)) >= JOURNEY_STARTS.perWindow) return "too_many";
 
       const id = crypto.randomUUID();
       const journeyToken = newJourneyToken();
