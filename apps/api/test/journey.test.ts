@@ -76,6 +76,34 @@ async function endJourney(id: string) {
   });
 }
 
+const saveSettings = (cookie: string, body: { locale: string }) =>
+  api("/me/settings", {
+    method: "PUT",
+    headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+describe("the language of a journey", () => {
+  it("is the language saved in settings, which the circle's SMS and page follow", async () => {
+    const cookie = await traveller();
+    expect((await saveSettings(cookie, { locale: "en" })).status).toBe(204);
+
+    const { journey } = await startJourney(cookie);
+
+    expect(journey.locale).toBe("en");
+  });
+
+  it("is not overruled by the language an older app sends with the journey", async () => {
+    const cookie = await traveller();
+    await saveSettings(cookie, { locale: "en" });
+
+    const res = await post("/journeys", { ...start, locale: "vi" }, { cookie });
+    const { journey } = await readData(res, StartedJourney);
+
+    expect(journey.locale).toBe("en");
+  });
+});
+
 describe("journeys API", () => {
   it("answers health checks", async () => {
     expect(await (await api("/health")).json()).toEqual({ data: { ok: true } });

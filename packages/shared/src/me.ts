@@ -8,10 +8,26 @@ export const Me = z.object({
   hasCodes: z.boolean(),
   circleSize: z.number().int().nonnegative(),
   locale: z.enum(["vi", "en"]),
+  /** Off by default: police (Công an 113) are the last step of the ladder, and only if the traveller turned it on. */
+  policeEnabled: z.boolean(),
 });
 
 export type Me = z.infer<typeof Me>;
 
+/**
+ * Body of `PUT /me/settings` (screen 20): the app's language, which also
+ * picks the language of the circle's SMS, and the police switch. Send only
+ * what changed.
+ */
+export const SetSettings = z
+  .object({
+    locale: z.enum(["vi", "en"]),
+    policeEnabled: z.boolean(),
+  })
+  .partial()
+  .refine((settings) => Object.keys(settings).length > 0, { message: "Nothing to change" });
+
+export type SetSettings = z.infer<typeof SetSettings>;
 
 /** Body of `PUT /me/name`: the name the circle sees in messages and on the web page. */
 export const SetName = z.object({ name: z.string().trim().min(1).max(50) });

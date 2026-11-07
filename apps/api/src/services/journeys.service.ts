@@ -53,7 +53,8 @@ export function journeysService(db: Db, objects: DurableObjectNamespace<JourneyO
         startedAt: new Date(),
       });
 
-      const journey = await stub(id).start(id, userId, input, await hashToken(journeyToken));
+      // The language saved in settings decides the circle's SMS and page, not what the app sent (older apps still send one).
+      const journey = await stub(id).start(id, userId, { ...input, locale: row.locale }, await hashToken(journeyToken));
 
       if (!journey) throw new Error("journey id already in use");
 

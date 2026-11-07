@@ -1,5 +1,5 @@
 import { createDb } from "@cage/db";
-import { failure, ResetCodes, SetCodes, SetName, success } from "@cage/shared";
+import { failure, ResetCodes, SetCodes, SetName, SetSettings, success } from "@cage/shared";
 import { Hono } from "hono";
 import { requireSession } from "../middleware/require-session";
 import { validate } from "../middleware/validate";
@@ -21,6 +21,12 @@ export const meController = new Hono<AuthedEnv>()
   /** The name the circle sees in messages and on the web page. */
   .put("/name", validate("json", SetName), async (c) => {
     await meService(createDb(c.env.DB)).setName(c.var.userId, c.req.valid("json").name);
+
+    return c.body(null, 204);
+  })
+  /** Settings (screen 20): the language, also used for the circle's SMS, and the police switch. */
+  .put("/settings", validate("json", SetSettings), async (c) => {
+    await meService(createDb(c.env.DB)).updateSettings(c.var.userId, c.req.valid("json"));
 
     return c.body(null, 204);
   })
