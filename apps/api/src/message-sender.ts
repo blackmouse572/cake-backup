@@ -29,7 +29,7 @@ const ZaloEnv = z.object({
   ZALO_ZNS_DEVELOPMENT: z.enum(["true", "false"]).default("false"),
 });
 
-/** Only Twilio for now; a Vietnamese brandname provider joins once one is picked (#12). */
+/** Only Twilio for now; a Vietnamese brandname provider joins once one is picked (#8). */
 const SmsEnv = z.object({
   SMS_PROVIDER: z.literal("twilio"),
   TWILIO_ACCOUNT_SID: required,

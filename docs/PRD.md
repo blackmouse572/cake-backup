@@ -108,7 +108,7 @@ The server is the most sensitive part of Cage because it knows where users are. 
 - **The user stays in control.** They choose who is in the circle and whether police are ever contacted.
 - **False alarms cost trust.** Every automatic alert has a grace period and a way to cancel.
 - **Saved evidence is protected.** Trip logs and ID copies are encrypted and shared only on purpose, for example with an NGO.
-- **Follow local law.** Vietnam's personal data protection rules (Decree 13/2023) need checking before launch.
+- **Follow local law.** Vietnam's Personal Data Protection Law (91/2025/QH15, in force since 1 January 2026, replacing Decree 13/2023) treats location as sensitive data, so Cage needs an impact assessment, a data protection officer and a transfer assessment for Cloudflare. Whether the 2025 Cybersecurity Law requires storage in Vietnam is open. See [privacy-review.md](privacy-review.md).
 
 ## Non-functional requirements
 
@@ -139,7 +139,8 @@ The MVP proves the journey loop works and that people trust its alerts.
 | Question | Current suggestion |
 | --- | --- |
 | Keep the name "Cage"? | Keep it as the brand but never show it on the phone in disguise mode. Test with Vietnamese users, since "cage" can read as trapped. |
-| Which NGOs and hotlines? | Contact Blue Dragon and Pacific Links. Use 111 as the default hotline. Start by showing their number to the circle; build direct alerts once one NGO partners. |
+| Which NGOs and hotlines? | Use 111 as the default hotline: since Decree 162/2025 it is also the national anti-trafficking line, 24/7. Contact Blue Dragon and Pacific Links before listing them. Start by showing numbers to the circle; build direct alerts once one NGO signs a data sharing agreement. See [hotlines.md](hotlines.md). |
+| Must Cage store data in Vietnam? | Ask a lawyer whether the 2025 Cybersecurity Law covers Cage. Cloudflare can't keep data in Vietnam, so a yes changes ADR 0001. See [privacy-review.md](privacy-review.md). |
 | What changes across borders? | The pre-trip check stores the destination hotline and nearest embassy. SMS cancel codes may not work abroad, so warn the user. |
 | Who pays? | Fund through grants and NGO partnerships first; later an optional paid family plan with extras such as longer history. |
 | Stack | Decided in [ADR 0001](adr/0001-stack.md). |
