@@ -17,7 +17,7 @@ export function circleLinksRepository(db: Db) {
     },
 
     /** Keeps the first time: a link already marked is left alone. */
-    async markOpened(tokenHash: string, at: Date): Promise<void> {
+    async recordOpened(tokenHash: string, at: Date): Promise<void> {
       await db
         .update(circleLinks)
         .set({ openedAt: at })

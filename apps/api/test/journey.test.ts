@@ -240,6 +240,13 @@ const openLink = (token: string) => api(`/links/${token}`);
 
 const circleView = async (token: string) => readData(await openLink(token), CircleJourneyView);
 
+const linkOpenedAt = async (token: string) =>
+  (
+    await env.DB.prepare("select opened_at as at from circle_links where token_hash = ?")
+      .bind(await hashToken(token))
+      .first<{ at: number | null }>()
+  )?.at;
+
 const countRows = async (sql: string, id: string) =>
   (await env.DB.prepare(sql).bind(id).first<{ n: number }>())!.n;
 
@@ -315,7 +322,7 @@ describe("the safety circle's links", () => {
     expect((await openLink(revokedLink)).status).toBe(404);
   });
 
-  it("answers a link with a changed, cut short or foreign token with 404", async () => {
+  it("answers a changed, cut short or extended link token with 404, and leaves other journeys' links working", async () => {
     const { journey } = await startJourney();
     const other = await startJourney();
     const token = await linkFor(journey.id);
@@ -332,34 +339,27 @@ describe("the safety circle's links", () => {
     const { journey } = await startJourney();
     const first = await linkFor(journey.id, 0);
     const second = await linkFor(journey.id, 1);
-    const opened = "select count(*) as n from circle_links where journey_id = ? and opened_at is not null";
-    expect(await countRows(opened, journey.id)).toBe(0);
 
-    await circleView(first);
-    expect(await countRows(opened, journey.id)).toBe(1);
+    expect(await linkOpenedAt(first)).toBeNull();
+    expect(await linkOpenedAt(second)).toBeNull();
 
+    const before = Date.now();
     await circleView(second);
-    expect(await countRows(opened, journey.id)).toBe(2);
+    expect(await linkOpenedAt(first)).toBeNull();
+    expect(await linkOpenedAt(second)).toBeGreaterThanOrEqual(before);
   });
 
   it("keeps the first time a contact opened their link", async () => {
     const { journey } = await startJourney();
     const token = await linkFor(journey.id);
 
-    const openedAt = async () =>
-      (
-        await env.DB.prepare("select opened_at as at from circle_links where token_hash = ?")
-          .bind(await hashToken(token))
-          .first<{ at: number | null }>()
-      )?.at;
-
     await circleView(token);
-    const first = await openedAt();
+    const first = await linkOpenedAt(token);
     expect(first).toBeGreaterThan(0);
 
     await new Promise((resolve) => setTimeout(resolve, 20));
     await circleView(token);
-    expect(await openedAt()).toBe(first);
+    expect(await linkOpenedAt(token)).toBe(first);
   });
 
   it("moves an unopened alert to the hotline step after the timeout", async () => {

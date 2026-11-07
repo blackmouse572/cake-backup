@@ -33,7 +33,8 @@ export function circleLinksService(db: Db, objects: DurableObjectNamespace<Journ
 
       if (!view || view.status === "ended") return null;
       await stub.markOpened(now);
-      await links.markOpened(link.tokenHash, new Date(now));
+
+      if (!link.openedAt) await links.recordOpened(link.tokenHash, new Date(now));
       const account = await users.find(journey.userId);
 
       const phone = account?.phoneNumber ?? "";
