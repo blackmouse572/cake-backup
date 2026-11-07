@@ -20,6 +20,7 @@
     },
     "plugins": [
       "expo-dev-client",
+      "@maplibre/maplibre-react-native",
       [
         "expo-contacts",
         {

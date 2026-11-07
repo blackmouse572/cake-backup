@@ -1,10 +1,20 @@
-import type { LatLng } from "@cage/shared";
+import {
+  ApiData,
+  Place,
+  PlaceSuggestions,
+  Route,
+  type LatLng,
+  type PlaceSuggestion,
+  type RouteMode,
+} from "@cage/shared";
 import * as Battery from "expo-battery";
 import * as Location from "expo-location";
+import { apiFetch } from "./api";
 
 /**
- * Where the traveller is and where they're going, from the phone's own
- * location and geocoder (no map provider yet, #15).
+ * Where the traveller is and where they're going. Place search and routes
+ * come from our API, which asks the maps provider (ADR 0004); the phone
+ * never calls the provider itself.
  */
 
 /** Asks for location while the app is open. Background location comes with #17. */
@@ -14,14 +24,51 @@ export async function allowLocation(): Promise<boolean> {
   return granted;
 }
 
-/** The first match for a typed address, or null. */
-export async function findPlace(address: string): Promise<LatLng | null> {
+/** Where the phone is now, or null without permission or a fix. */
+export async function currentPosition(): Promise<LatLng | null> {
   try {
-    const [first] = await Location.geocodeAsync(address);
+    const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
 
-    return first ? { lat: first.latitude, lng: first.longitude } : null;
+    return { lat: coords.latitude, lng: coords.longitude };
   } catch {
     return null;
+  }
+}
+
+/** Places matching what the traveller typed, near where they are. */
+export async function suggestPlaces(query: string, near: LatLng | null): Promise<PlaceSuggestion[] | "error"> {
+  const params = new URLSearchParams({ q: query });
+
+  if (near) params.set("near", `${near.lat},${near.lng}`);
+
+  try {
+    const res = await apiFetch(`/places/suggest?${params.toString()}`);
+
+    return res.ok ? ApiData(PlaceSuggestions).parse(await res.json()).data : "error";
+  } catch {
+    return "error";
+  }
+}
+
+/** The picked suggestion with its position. */
+export async function placeDetails(id: string): Promise<Place | "error"> {
+  try {
+    const res = await apiFetch(`/places/${encodeURIComponent(id)}`);
+
+    return res.ok ? ApiData(Place).parse(await res.json()).data : "error";
+  } catch {
+    return "error";
+  }
+}
+
+/** The suggested route and travel time from here to the destination. */
+export async function planRoute(from: LatLng, to: LatLng, mode: RouteMode): Promise<Route | "error"> {
+  try {
+    const res = await apiFetch("/routes", { method: "POST", body: JSON.stringify({ from, to, mode }) });
+
+    return res.ok ? ApiData(Route).parse(await res.json()).data : "error";
+  } catch {
+    return "error";
   }
 }
 

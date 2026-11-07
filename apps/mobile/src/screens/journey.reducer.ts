@@ -4,7 +4,7 @@ import { CODE_LENGTH, type JourneyView } from "@cage/shared";
 export type CodeProblem = "wrong_code" | "too_many_tries" | "error";
 
 /** Why a journey didn't start. */
-export type PlanProblem = "not_found" | "need_location" | "error";
+export type PlanProblem = "need_location" | "error";
 
 /** The code screen (26 to answer a check-in, 26b to end the trip). */
 export interface CodeEntry {
