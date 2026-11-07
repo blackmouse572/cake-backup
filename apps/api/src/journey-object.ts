@@ -137,6 +137,7 @@ export class JourneyObject extends DurableObject<Bindings> {
    * Takes an update only with this journey's token, and only while the
    * journey runs: the token dies when the journey ends. An unknown journey
    * gets the same answer as a wrong token, so a token can't probe for ids.
+   * An update after lost contact means the phone is back (#23).
    */
   async update(update: LocationUpdate, tokenHash: string, now = Date.now()): Promise<JourneyView | UpdateRefused> {
     const state = await this.load();
@@ -146,7 +147,13 @@ export class JourneyObject extends DurableObject<Bindings> {
     state.lastHeardAt = now;
 
     if (!state.simulated) state.lastUpdate = update;
-    await this.ctx.storage.put(STATE, state);
+
+    if (state.status === "lost_contact") {
+      this.backOnline(state, now);
+      await this.save(state);
+    } else {
+      await this.ctx.storage.put(STATE, state);
+    }
 
     return travellerView(state);
   }
@@ -403,6 +410,22 @@ export class JourneyObject extends DurableObject<Bindings> {
       state.shownStatus = "check_in";
       state.deadlineAt = checkInDeadline(now);
     }
+  }
+
+  /**
+   * The phone is heard from again after lost contact (screen 16): the
+   * journey carries on, the circle is told, and the server checks in once
+   * the buffer passes again, since the traveller is late. A stronger alert
+   * (SOS, the duress PIN) is never lifted this way: its status is not
+   * "lost_contact".
+   */
+  private backOnline(state: JourneyState, now: number): void {
+    state.status = "active";
+    state.shownStatus = "active";
+    state.alert = null;
+    state.ladderAt = null;
+    state.deadlineAt = Math.max(arrivalDeadline(state.expectedArrivalAt), now + TIMERS.arrivalBufferMs);
+    state.outbox.push({ kind: "back_online" });
   }
 
   /**

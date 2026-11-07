@@ -242,6 +242,7 @@
     },
     "lostContactBattery": "Cage lost contact with {{name}} after they were due to arrive. Their battery was nearly empty, so the phone probably died. Last location at {{url}}",
     "safeNow": "{{name}} confirmed they're safe with their safe code. Nothing more to do.",
+    "backOnline": "Cage is back in touch with {{name}}. Their phone is sending its location again. See it at {{url}}",
     "codesReset": "{{name}} just reset their codes in Cage. If {{name}} hasn't mentioned it, give them a call to check on them."
   },
   "demo": {

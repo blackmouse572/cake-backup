@@ -64,6 +64,7 @@ These patterns are from general knowledge and still need checking against source
 - Silence alone only reaches the circle, never police or hotlines.
 - The user can cancel from another device or by SMS code, and a circle member can mark that they reached the user.
 - Can be turned on per trip, for risky journeys only.
+- When updates resume, the journey goes back to active and the circle gets a calm "back in touch" message with the link (screen 16). The server checks in again once the arrival buffer passes, since the traveller is late. A stronger alert (SOS, the duress PIN) stays on: only the safe code ends it.
 
 ### Escalation ladder
 - Safety circle first, then a hotline or NGO (Tổng đài 111, Blue Dragon), then police (Công an 113) only if the user turned it on. For migrants or people without papers, police can be risky.

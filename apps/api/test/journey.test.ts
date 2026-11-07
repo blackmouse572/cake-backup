@@ -970,3 +970,71 @@ describe("the duress PIN outside a journey's own screens", () => {
     expect((await stubFor(journey.id).circleView())?.alert).toBeNull();
   });
 });
+
+/** A journey that lost contact, with its alert sent. */
+async function lostContact() {
+  const started = await startJourney();
+  expect((await sendUpdate(started.journey.id, started.journeyToken)).status).toBe(200);
+  await goQuiet(started.journey.id);
+  await passDeadline(started.journey.id);
+  expect((await stubFor(started.journey.id).circleView())?.status).toBe("lost_contact");
+
+  return started;
+}
+
+const lastMessage = async (id: string) =>
+  (
+    await env.DB.prepare("select text from demo_messages where journey_id = ? order by rowid desc limit 1")
+      .bind(id)
+      .first<{ text: string }>()
+  )?.text;
+
+describe("coming back after lost contact", () => {
+  it("goes back to active and tells the circle when updates resume", async () => {
+    const { journey, journeyToken, cookie } = await lostContact();
+    const before = await messagesSent(journey.id);
+
+    const res = await sendUpdate(journey.id, journeyToken);
+    expect((await readData(res, JourneyView)).status).toBe("active");
+    await flush(journey.id);
+
+    expect(await stubFor(journey.id).circleView()).toMatchObject({ status: "active", alert: null });
+    expect((await travellerView(journey.id, cookie)).status).toBe("active");
+    expect(await messagesSent(journey.id)).toBe(before + 2);
+    expect(await lastMessage(journey.id)).toContain("kết nối lại");
+
+    const row = await env.DB.prepare("select status from journeys where id = ?").bind(journey.id).first<{ status: string }>();
+    expect(row?.status).toBe("active");
+  });
+
+  it("tells the circle only once, however many updates follow", async () => {
+    const { journey, journeyToken } = await lostContact();
+    await sendUpdate(journey.id, journeyToken);
+    await flush(journey.id);
+    const after = await messagesSent(journey.id);
+
+    await sendUpdate(journey.id, journeyToken);
+    await flush(journey.id);
+
+    expect(await messagesSent(journey.id)).toBe(after);
+  });
+
+  it("keeps watching: the server checks in again after the buffer", async () => {
+    const { journey, journeyToken, cookie } = await lostContact();
+    const before = Date.now();
+    const view = await readData(await sendUpdate(journey.id, journeyToken), JourneyView);
+
+    expect(view.nextDeadlineAt).toBeGreaterThanOrEqual(before + TIMERS.arrivalBufferMs);
+    await passDeadline(journey.id);
+    expect((await travellerView(journey.id, cookie)).status).toBe("check_in");
+  });
+
+  it("leaves a stronger alert alone when updates resume", async () => {
+    const { journey, journeyToken, cookie } = await lostContact();
+    expect((await api(`/journeys/${journey.id}/sos`, { method: "POST", headers: { cookie } })).status).toBe(200);
+
+    await sendUpdate(journey.id, journeyToken);
+
+    expect((await stubFor(journey.id).circleView())?.alert?.reason).toBe("sos");
+  });
+});

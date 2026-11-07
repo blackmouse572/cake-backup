@@ -15,7 +15,9 @@ export type CircleNotice =
   | { kind: "journey_started"; destination: string; arriveAt: number }
   /** `step` is "hotline" when nobody opened the first alert and it goes out again (#18). */
   | { kind: "alert"; reason: AlertReason; likelyBatteryDied?: boolean; step?: "circle" | "hotline" }
-  | { kind: "safe_now" };
+  | { kind: "safe_now" }
+  /** Updates resumed after lost contact (#23). */
+  | { kind: "back_online" };
 
 export interface JourneyRef {
   id: string;
@@ -71,7 +73,9 @@ export function circleMessagesService(db: Db, sender: MessageSender, webUrl: str
         const message: Message =
           notice.kind === "alert"
             ? { kind: "alert", reason: notice.reason, likelyBatteryDied: notice.likelyBatteryDied, name, url: link.url }
-            : { kind: "journey_started", name, destination: notice.destination, arriveAt: notice.arriveAt, url: link.url };
+            : notice.kind === "back_online"
+              ? { kind: "back_online", name, url: link.url }
+              : { kind: "journey_started", name, destination: notice.destination, arriveAt: notice.arriveAt, url: link.url };
 
         const ok = await sender.send({ to: contact.phone, locale: journey.locale, message });
         sent += ok === "sent" ? 1 : 0;
