@@ -37,6 +37,8 @@ export type JourneyAction =
   | { type: "codeResult"; result: "ok" | CodeProblem }
   | { type: "sosSending" }
   | { type: "sosFailed" }
+  /** The server answered. The phone may still show a quiet screen (after a duress PIN), so it stops waiting here, not on "alerted". */
+  | { type: "sosSent" }
   | { type: "newTrip" };
 
 export const initialJourneyFlow: JourneyFlow = { name: "plan", busy: false, problem: null };
@@ -70,6 +72,8 @@ export function journeyReducer(state: JourneyFlow, action: JourneyAction): Journ
       return { ...state, journey: action.journey, sos: action.journey.status === "alerted" ? "idle" : state.sos };
     case "sosSending":
       return state.sos === "sending" ? state : { ...state, sos: "sending" };
+    case "sosSent":
+      return { ...state, sos: "idle" };
     case "sosFailed":
       // A poll may have shown the alert already; then there is nothing to retry.
       return { ...state, sos: state.journey.status === "alerted" ? "idle" : "failed" };

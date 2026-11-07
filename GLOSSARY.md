@@ -14,7 +14,7 @@ Domain language for Cage. Use the English term in code and the Vietnamese term i
 | Escalation ladder | | Order of who is alerted: safety circle, then hotline/NGO, then police only if the user enabled it. |
 | Safe code | Mã an toàn | The user's PIN to confirm they are safe. |
 | Duress PIN | Mã khẩn cấp | A PIN that looks like "I'm safe" but silently sends the alert. |
-| SOS | | One-tap manual alert, always reachable during a journey. |
+| SOS | | Manual alert, always reachable during a journey. A one-second press and hold, so a pocket press can't raise it. |
 | Fake call | | A fake incoming call that helps the user leave an uncomfortable situation. Distinct from the check-in call. |
 | Disguise mode | Ngụy trang | Neutral app name and icon (for example a notes app), quiet notifications, quick-hide and a decoy screen. |
 | Journal | Nhật ký | Timeline of a trip that can be saved and shared as evidence. Unsaved trips are deleted. |

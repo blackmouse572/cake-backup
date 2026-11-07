@@ -130,7 +130,11 @@ export function JourneyFlow({ onSettings }: { onSettings: () => void }) {
     dispatch({ type: "sosSending" });
     const view = await sendSos(id);
 
-    dispatch(view === "error" ? { type: "sosFailed" } : { type: "view", journey: view });
+    if (view === "error") return dispatch({ type: "sosFailed" });
+
+    if (view === "gone") return dispatch({ type: "gone" });
+    dispatch({ type: "view", journey: view });
+    dispatch({ type: "sosSent" });
   }
 
   switch (state.name) {

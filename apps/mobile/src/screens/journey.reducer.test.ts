@@ -86,6 +86,14 @@ describe("the journey on the phone", () => {
     expect(journeyReducer(alerted, { type: "sosFailed" })).toMatchObject({ sos: "idle" });
   });
 
+  it("stops waiting once the server has answered, even when the phone still shows a quiet screen", () => {
+    // After a duress PIN the phone keeps showing "active", so the answer is not "alerted".
+    const sending = journeyReducer(travelling, { type: "sosSending" });
+    const answered = journeyReducer(sending, { type: "view", journey });
+
+    expect(journeyReducer(answered, { type: "sosSent" })).toMatchObject({ sos: "idle", journey: { status: "active" } });
+  });
+
   it("ignores an SOS before a journey is running", () => {
     expect(journeyReducer(initialJourneyFlow, { type: "sosSending" })).toBe(initialJourneyFlow);
   });
