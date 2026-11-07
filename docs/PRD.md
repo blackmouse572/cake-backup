@@ -46,6 +46,7 @@ These patterns are from general knowledge and still need checking against source
 ### Duress PIN
 - Works in the app and on the check-in call.
 - Looks exactly like "I'm safe" in the UI, timing and network behaviour, while sending the alert quietly.
+- Afterwards the phone carries on exactly as after the safe code: check-ins at the next deadline or when the phone asks, the alert screen after an unanswered check-in, too many wrong codes or SOS, and after "ending" the trip its token, codes and SOS answer as for an ended trip. Only the circle sees the alert, and it hears nothing new from these.
 
 ### Wrong codes on a journey
 - Five wrong codes on a journey (check-ins and ending it share the count) lock every code for 5 minutes, the safe code and the duress PIN included, so whoever holds the phone can't quickly try codes until one works. During a check-in they also count as no answer and alert the circle.
