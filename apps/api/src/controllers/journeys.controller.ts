@@ -33,7 +33,11 @@ export const journeysController = new Hono<AppEnv>()
   .post("/", requireSession, validate("json", StartJourney), async (c) => {
     const result = await service(c.env).start(c.var.userId, c.req.valid("json"));
 
-    return result === "no_codes" ? c.json(failure(result), 409) : c.json(success(result), 201);
+    if (result === "no_codes") return c.json(failure(result), 409);
+
+    if (result === "too_many") return c.json(failure("rate_limited"), 429);
+
+    return c.json(success(result), 201);
   })
   .post("/:id/updates", requireJourneyToken, validate("json", LocationUpdate), async (c) => {
     const result = await service(c.env).update(c.req.param("id"), c.var.journeyToken, c.req.valid("json"));

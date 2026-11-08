@@ -1,5 +1,5 @@
 import { journeys, type Db } from "@cage/db";
-import { and, eq, ne } from "drizzle-orm";
+import { and, count, eq, gte, ne } from "drizzle-orm";
 
 export type NewJourney = typeof journeys.$inferInsert;
 
@@ -33,6 +33,17 @@ export function journeysRepository(db: Db) {
         .update(journeys)
         .set(endedAt ? { status, endedAt } : { status })
         .where(eq(journeys.id, id));
+    },
+
+    /** How many journeys this traveller started at or after `since`. */
+    async countStartedSince(userId: string, since: Date): Promise<number> {
+      const row = await db
+        .select({ n: count() })
+        .from(journeys)
+        .where(and(eq(journeys.userId, userId), gte(journeys.startedAt, since)))
+        .get();
+
+      return row?.n ?? 0;
     },
 
     /** Ids of this traveller's journeys that the summary row doesn't mark as ended. */

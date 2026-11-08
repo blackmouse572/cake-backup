@@ -10,7 +10,7 @@ import {
 import { env, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it, vi } from "vitest";
 import type { JourneyObject } from "../src/journey-object";
-import { JOURNEY_CODES } from "../src/constants";
+import { JOURNEY_CODES, JOURNEY_STARTS } from "../src/constants";
 import { hashToken } from "../src/utils";
 import { api, newNumber, readData, readError, send, signIn } from "./helpers";
 
@@ -101,6 +101,19 @@ describe("the language of a journey", () => {
     const { journey } = await readData(res, StartedJourney);
 
     expect(journey.locale).toBe("en");
+  });
+});
+
+describe("starting journeys", () => {
+  it(`allows ${JOURNEY_STARTS.perWindow} starts a window, since each one messages the whole circle`, async () => {
+    const cookie = await traveller();
+
+    for (let i = 0; i < JOURNEY_STARTS.perWindow; i++) await startJourney(cookie);
+
+    const res = await post("/journeys", start, { cookie });
+
+    expect(res.status).toBe(429);
+    expect(await readError(res)).toBe("rate_limited");
   });
 });
 

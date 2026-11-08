@@ -1,0 +1,8 @@
+# Keeps the pinned GitHub Actions (full commit SHAs in .github/workflows)
+# up to date. npm packages are left to us: bun.lock is reviewed by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

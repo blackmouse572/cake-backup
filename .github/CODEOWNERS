@@ -1,0 +1,18 @@
+# Files that run code on a developer's machine, in CI or in Workers Builds.
+# A change here needs the owner's review once "Require review from Code
+# Owners" is on for main (docs/security.md).
+/.github/                @blackmouse572
+/package.json            @blackmouse572
+/apps/*/package.json     @blackmouse572
+/packages/*/package.json @blackmouse572
+/bun.lock                @blackmouse572
+/lefthook.yml            @blackmouse572
+/commitlint.config.js    @blackmouse572
+/turbo.json              @blackmouse572
+/apps/*/wrangler.jsonc   @blackmouse572
+/apps/*/vite.config.ts   @blackmouse572
+/apps/*/vitest.config.ts @blackmouse572
+/.agents/                @blackmouse572
+/.claude/                @blackmouse572
+/.oxlintrc.json          @blackmouse572
+/tools/                  @blackmouse572

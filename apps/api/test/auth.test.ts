@@ -68,3 +68,54 @@ describe("sign-in with a phone number", () => {
     expect((await send("/me/codes", "PUT", { safe: "2580", duress: "2591" })).status).toBe(401);
   });
 });
+
+describe("only the sign-in routes of Better Auth are open", () => {
+  it.each([
+    ["POST", "/auth/sign-in/phone-number"],
+    ["POST", "/auth/phone-number/request-password-reset"],
+    ["POST", "/auth/phone-number/reset-password"],
+    ["POST", "/auth/update-user"],
+    ["POST", "/auth/change-password"],
+    ["POST", "/auth/delete-user"],
+    ["GET", "/auth/list-sessions"],
+    ["GET", "/auth/phone-number/verify"],
+    ["POST", "/auth/phone-number/verify/"],
+  ])("%s %s answers 404", async (method, path) => {
+    const { cookie } = await signIn();
+
+    const res = await api(path, {
+      method,
+      headers: { cookie, "content-type": "application/json" },
+      body: method === "GET" ? undefined : JSON.stringify({ name: "x", phoneNumber: newNumber() }),
+    });
+
+    expect(res.status).toBe(404);
+    expect(await readError(res)).toBe("not_found");
+  });
+
+  it("keeps the session readable", async () => {
+    const { cookie } = await signIn();
+    const res = await api("/auth/get-session", { headers: { cookie } });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("never moves a signed-in account to another number", async () => {
+    const { cookie, phoneNumber } = await signIn();
+    const other = newNumber();
+    const ip = { "cf-connecting-ip": "10.9.9.9" };
+    expect((await send("/auth/phone-number/send-otp", "POST", { phoneNumber: other }, ip)).status).toBe(200);
+    const code = await pendingCode(other);
+
+    const res = await api("/auth/phone-number/verify", {
+      method: "POST",
+      // The app sends its origin like this (Better Auth's Expo plugin).
+      headers: { cookie, "content-type": "application/json", "expo-origin": "cage://", ...ip },
+      body: JSON.stringify({ phoneNumber: other, code, updatePhoneNumber: true }),
+    });
+
+    expect(res.status).toBe(400);
+    const me = await readData(await api("/me", { headers: { cookie } }), Me);
+    expect(me.phoneNumber).toBe(phoneNumber);
+  });
+});

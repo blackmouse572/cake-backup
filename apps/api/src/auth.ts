@@ -3,8 +3,9 @@ import { E164 } from "@cage/shared";
 import { expo } from "@better-auth/expo";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { phoneNumber } from "better-auth/plugins";
+import { z } from "zod";
 import type { Bindings } from "./bindings";
 import { RATE_LIMIT, SESSION, SIGN_IN_CODE } from "./constants";
 import { messageSenderFor } from "./message-sender";
@@ -17,6 +18,9 @@ import { signInCodesService } from "./services/sign-in-codes.service";
  * Sessions last a year (SESSION), so the app stays signed in and never opens
  * on a sign-in screen (which would give it away in disguise mode).
  */
+/** A verify request that would move the signed-in account to another number. */
+const ChangesNumber = z.object({ updatePhoneNumber: z.literal(true) });
+
 export function createAuth(env: Bindings) {
   const db = createDb(env.DB);
 
@@ -41,6 +45,16 @@ export function createAuth(env: Bindings) {
     },
     advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
     telemetry: { enabled: false },
+    hooks: {
+      // Better Auth lets a session move its account to any number it can get a
+      // code for. Whoever holds the traveller's unlocked phone could then put
+      // their own number on the circle's page, so the number never changes.
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === "/phone-number/verify" && ChangesNumber.safeParse(ctx.body).success) {
+          throw new APIError("BAD_REQUEST", { message: "phone_number_fixed" });
+        }
+      }),
+    },
     plugins: [
       expo(),
       phoneNumber({

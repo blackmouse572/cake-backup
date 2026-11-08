@@ -38,16 +38,17 @@ export const CHANGE_CODES = {
 } as const;
 
 /**
- * Better Auth routes that end a session. A session alone must not be able to
- * sign out, so they answer 404 and `POST /me/sign-out`, which needs the safe
- * code, is the only way.
+ * The only Better Auth routes the API serves; every other `/auth/*` path
+ * answers 404. The app signs in with a phone number and a code and nothing
+ * else, so the password, account and session routes Better Auth also has are
+ * closed. That includes the ones that end a session: a session alone must not
+ * be able to sign out, and `POST /me/sign-out`, which needs the safe code, is
+ * the only way.
  */
-export const SESSION_ENDING_ROUTES = [
-  "/auth/sign-out",
-  "/auth/revoke-session",
-  "/auth/revoke-sessions",
-  "/auth/revoke-other-sessions",
-];
+export const AUTH_ROUTES = {
+  post: ["/auth/phone-number/send-otp", "/auth/phone-number/verify"],
+  get: ["/auth/get-session"],
+} as const;
 
 /**
  * The "Quên mã?" (forgot code) path: new codes without the current safe
@@ -104,6 +105,17 @@ export const NEAR_DECIMALS = 2;
 
 /** How long to wait for a message or maps provider before giving up on it. */
 export const PROVIDER_TIMEOUT_MS = 8_000;
+
+/**
+ * Journeys one traveller can start per window. Each start messages every
+ * contact in the circle, and the traveller picks both the numbers and the
+ * destination text, so without a limit a signed-in account could send
+ * unlimited messages from Cage's sender to anyone.
+ */
+export const JOURNEY_STARTS = {
+  perWindow: 10,
+  windowMs: HOUR_MS,
+} as const;
 
 /** The journey token the app sends with location updates (ADR 0002). */
 export const JOURNEY_TOKEN = {
