@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { Mark } from "../brand";
 import { LiveJourney } from "../components/circle-view";
+import { DemoRouteMap } from "../components/demo-route-map";
 import { LocaleProvider } from "../i18n";
 import { demoControl, demoTravellers, demoTrip, getLocale, type DemoRefusal } from "../server/functions";
 
@@ -457,7 +458,7 @@ function Drive({
       <main className="grid">
         <section className="col">
           <Panel icon="route" title={t("demo.route")}>
-            <RouteMap route={route} step={step} off={off} danger={danger} />
+            <DemoRouteMap route={route} step={step} off={off} danger={danger} />
             <div className="row" style={{ marginTop: 12 }}>
               {off ? (
                 <span className="cap bad">
@@ -686,37 +687,6 @@ function TileButton({
       <span className="cd-icon">{icon}</span>
       {children}
     </button>
-  );
-}
-
-/** The fake route drawn to fit its box: done in pale blue, to go in blue, off route in red. */
-function RouteMap({ route, step, off, danger }: { route: LatLng[]; step: number; off: LatLng | null; danger: boolean }) {
-  const width = 558;
-  const height = 104;
-  const pad = 16;
-  const points = off ? [...route, off] : route;
-  const lats = points.map((p) => p.lat);
-  const lngs = points.map((p) => p.lng);
-  const [minLat, maxLat, minLng, maxLng] = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
-  const scale = Math.min((width - pad * 2) / (maxLng - minLng || 1e-6), (height - pad * 2) / (maxLat - minLat || 1e-6));
-  const x = (p: LatLng) => pad + (p.lng - minLng) * scale + (width - pad * 2 - (maxLng - minLng) * scale) / 2;
-  const y = (p: LatLng) => height - pad - (p.lat - minLat) * scale - (height - pad * 2 - (maxLat - minLat) * scale) / 2;
-  const line = (ps: LatLng[]) => ps.map((p, i) => `${i ? "L" : "M"}${x(p).toFixed(1)} ${y(p).toFixed(1)}`).join("");
-  const here = route[step]!;
-  const dot = off ?? here;
-  const end = route[route.length - 1]!;
-
-  return (
-    <svg className="rmap" viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
-      <path className="r r--case" d={line(route)} />
-      <path className="r r--done" d={line(route.slice(0, step + 1))} />
-      <path className={off ? "r r--plan" : "r"} d={line(route.slice(step))} />
-      {off ? <path className="r r--off" d={line([here, off])} /> : null}
-      <circle cx={x(route[0]!)} cy={y(route[0]!)} r="6" className="r-start" />
-      <circle cx={x(dot)} cy={y(dot)} r="16" className={danger || off ? "r-halo r-halo--bad" : "r-halo"} />
-      <circle cx={x(dot)} cy={y(dot)} r="7" className={danger || off ? "r-dot r-dot--bad" : "r-dot"} />
-      <circle cx={x(end)} cy={y(end)} r="11" className="r-flag" />
-    </svg>
   );
 }
 

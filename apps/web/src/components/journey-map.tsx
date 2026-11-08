@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
  * Free OpenStreetMap vector tiles, no key. A stand-in until the map
  * provider is chosen (#15, ADR 0004).
  */
-const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+export const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 /** Room around the two points; the bottom also clears the sheet that covers the map. */
 const FIT_PADDING = { top: 96, side: 56, belowSheet: 48 };
@@ -54,16 +54,20 @@ export function JourneyMap({ destination, position, alerting, positionLabel }: J
 
   // Built once per destination; the effect below moves and colours the dot.
   useEffect(() => {
-    const ready = import("maplibre-gl").then((maplibre) => {
+    // Set once the map exists, so a cleanup that runs first (StrictMode, a new destination) never builds it.
+    let built: MapLibreMap | null = null;
+    const stop = new AbortController();
+
+    void import("maplibre-gl").then((maplibre) => {
       const node = container.current;
 
-      if (!node) return null;
+      if (!node || stop.signal.aborted) return;
       // Bundling moves the worker away from where MapLibre looks for it, so point at the copy Vite serves.
       maplibre.setWorkerUrl(workerUrl);
 
       const map = new maplibre.Map({
         container: node,
-        style: STYLE_URL,
+        style: MAP_STYLE_URL,
         center: [destLng, destLat],
         zoom: DEFAULT_ZOOM,
         attributionControl: { compact: true },
@@ -75,13 +79,13 @@ export function JourneyMap({ destination, position, alerting, positionLabel }: J
 
       const dot = new maplibre.Marker({ element: el("map-dot", ""), anchor: "center" });
       setLoaded({ map, dot });
-
-      return map;
+      built = map;
     });
 
     return () => {
+      stop.abort();
       setLoaded(null);
-      void ready.then((map) => map?.remove());
+      built?.remove();
     };
   }, [destLat, destLng]);
 
