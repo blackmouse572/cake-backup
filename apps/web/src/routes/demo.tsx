@@ -337,6 +337,8 @@ function Drive({
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(SPEEDS[1]);
   const [off, setOff] = useState<LatLng | null>(null);
   const [local, setLocal] = useState<LocalEntry[]>([]);
+  // Loads the trip now instead of on the next tick, so the log shows an action's messages straight away.
+  const reload = useRef(() => {});
   const battery = useRef(START_BATTERY);
 
   const note = useCallback((text: string) => setLocal((l) => [{ at: Date.now(), text }, ...l]), []);
@@ -351,9 +353,15 @@ function Drive({
     let timer: ReturnType<typeof setTimeout> | undefined;
     const stop = new AbortController();
 
-    const load = () =>
+    // Only the latest load sets the next tick, so an early reload never doubles the polling.
+    let latest = 0;
+
+    const load = () => {
+      const mine = ++latest;
+      clearTimeout(timer);
+
       void demoTrip({ data: { key: demoKey, id } }).then((next) => {
-        if (stop.signal.aborted) return;
+        if (stop.signal.aborted || mine !== latest) return;
 
         if (!next) return setGone(true);
         setTrip(next);
@@ -366,7 +374,9 @@ function Drive({
         });
         timer = setTimeout(load, TICK_MS);
       });
+    };
 
+    reload.current = load;
     load();
 
     return () => {
@@ -424,11 +434,13 @@ function Drive({
     note(t("demo.logOff"));
     await control({ kind: "check-in" });
     note(t("demo.logAsk"));
+    reload.current();
   }
 
   async function act(kind: "check-in" | "skip" | "lose-contact", text: string) {
     await control({ kind });
     note(text);
+    reload.current();
   }
 
   async function restart() {
@@ -755,27 +767,174 @@ function TripCard({ journey, locale }: { journey: DemoJourneyView; locale: Local
   );
 }
 
+type LogRow = { key: string; at: number; text: string; sms: DemoMessage | null };
+
+/**
+ * The dashboard's log, newest first. Rows that arrive after it opens slide in
+ * and flash once. An SMS row opens the message as the contact would see it.
+ */
 function Log({ messages, local, locale }: { messages: DemoMessage[]; local: LocalEntry[]; locale: Locale }) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState<DemoMessage | null>(null);
 
-  const rows = [
-    ...messages.map((m) => ({ at: m.sentAt, text: t("demo.logSms", { name: m.to, text: m.text }), sms: true })),
-    ...local.map((l) => ({ at: l.at, text: l.text, sms: false })),
+  const rows: LogRow[] = [
+    ...messages.map((m) => ({
+      key: `sms-${m.sentAt}-${m.to}-${m.text}`,
+      at: m.sentAt,
+      text: t("demo.logSms", { name: m.to, text: m.text }),
+      sms: m,
+    })),
+    ...local.map((l) => ({ key: `note-${l.at}-${l.text}`, at: l.at, text: l.text, sms: null })),
   ].toSorted((a, b) => b.at - a.at);
 
+  // Rows already there when the log opened don't flash; only the ones that arrive later do.
+  const [first] = useState(() => new Set(rows.map((r) => r.key)));
+
   return (
-    <ul className="log">
-      {rows.map((r, i) => (
-        <li key={`${r.at}-${i}`}>
-          <time>{formatTime(r.at, locale)}</time>
-          <span className="t" title={r.text}>
-            {r.text}
+    <>
+      <ul className="log">
+        {rows.map((r) => (
+          <li key={r.key} className={first.has(r.key) ? "" : "is-new"}>
+            {r.sms ? (
+              <button
+                type="button"
+                className="log__row log__row--open"
+                aria-label={t("demo.smsOpen", { name: r.sms.to })}
+                onClick={() => setOpen(r.sms)}
+              >
+                <LogLine row={r} locale={locale} />
+                <span className="cd-icon" aria-hidden="true">
+                  sms
+                </span>
+              </button>
+            ) : (
+              <div className="log__row">
+                <LogLine row={r} locale={locale} />
+                <span className="cd-icon" aria-label={t("demo.byDashboard")}>
+                  tune
+                </span>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {open ? <SmsThread opened={open} messages={messages} locale={locale} onClose={() => setOpen(null)} /> : null}
+    </>
+  );
+}
+
+function LogLine({ row, locale }: { row: LogRow; locale: Locale }) {
+  return (
+    <>
+      <time>{formatTime(row.at, locale)}</time>
+      <span className="t" title={row.text}>
+        {row.text}
+      </span>
+    </>
+  );
+}
+
+/** A new time label when messages are this far apart, as a phone's messages app does. */
+const SMS_GAP_MS = 5 * 60_000;
+
+const URL_IN_TEXT = /(https?:\/\/[^\s]+[^\s.,)])/;
+
+/**
+ * Every SMS one contact would have had, on a phone like canvas screen 21, opened
+ * on the one picked in the log. Nothing here is sent: the demo only logs them.
+ * New messages show up while it's open.
+ */
+function SmsThread({
+  opened,
+  messages,
+  locale,
+  onClose,
+}: {
+  opened: DemoMessage;
+  messages: DemoMessage[];
+  locale: Locale;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const dialog = useRef<HTMLDialogElement>(null);
+  const picked = useRef<HTMLParagraphElement>(null);
+  const thread = messages.filter((m) => m.to === opened.to).toSorted((a, b) => a.sentAt - b.sentAt);
+
+  useEffect(() => {
+    dialog.current?.showModal();
+    picked.current?.scrollIntoView({ block: "center" });
+  }, []);
+
+  return (
+    <dialog
+      ref={dialog}
+      className="sms-pop"
+      aria-labelledby="sms-title"
+      onClose={onClose}
+      onClick={(e) => {
+        // The backdrop belongs to the dialog element, so only a click outside its box counts as outside.
+        const box = e.currentTarget.getBoundingClientRect();
+        const outside = e.clientY < box.top || e.clientY > box.bottom || e.clientX < box.left || e.clientX > box.right;
+
+        if (outside) e.currentTarget.close();
+      }}
+    >
+      <div className="sms-pop__h">
+        <span className="cd-icon ink">sms</span>
+        <h2 id="sms-title">{t("demo.smsTitle", { name: opened.to })}</h2>
+        <span className="sp" />
+        <button type="button" className="cd-btn cd-btn--ghost cd-btn--sm" aria-label={t("common.close")} onClick={() => dialog.current?.close()}>
+          <span className="cd-icon">close</span>
+        </button>
+      </div>
+      <div className="phone sms">
+        <div className="sms__hd">
+          <span className="sms__av" aria-hidden="true">
+            {t("demo.smsSender").slice(0, 1)}
           </span>
-          <span className="cd-icon" aria-label={t(r.sms ? "demo.logOnlyLogged" : "demo.byDashboard")}>
-            {r.sms ? "sms" : "tune"}
-          </span>
-        </li>
-      ))}
-    </ul>
+          <small>{t("demo.smsSender")}</small>
+        </div>
+        <div className="sms__thread">
+          {thread.map((m, i) => {
+            const earlier = thread[i - 1];
+            const label = !earlier || m.sentAt - earlier.sentAt > SMS_GAP_MS;
+            const isPicked = m.sentAt === opened.sentAt && m.text === opened.text;
+
+            return (
+              <div key={`${m.sentAt}-${i}`}>
+                {label ? <p className="sms__ts">{t("demo.smsToday", { time: formatTime(m.sentAt, locale) })}</p> : null}
+                <p ref={isPicked ? picked : undefined} className="sms__b">
+                  <SmsText text={m.text} />
+                </p>
+              </div>
+            );
+          })}
+        </div>
+        <div className="sms__composer" aria-hidden="true">
+          <span className="cd-icon">add_circle</span>
+          <span className="sms__f">{t("demo.smsInput")}</span>
+          <span className="cd-icon">mic</span>
+        </div>
+      </div>
+      <p className="sms-pop__foot">
+        <span className="cd-chip cd-chip--sm cd-chip--warning">
+          <span className="cd-icon">block</span>
+          {t("demo.notSent")}
+        </span>
+      </p>
+    </dialog>
+  );
+}
+
+/** The message text with its link clickable, as a phone shows it. */
+function SmsText({ text }: { text: string }) {
+  return text.split(URL_IN_TEXT).map((part, i) =>
+    i % 2 === 1 ? (
+      <a key={i} href={part} target="_blank" rel="noreferrer">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
   );
 }
