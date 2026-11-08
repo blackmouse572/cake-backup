@@ -86,6 +86,8 @@ These patterns are from general knowledge and still need checking against source
 
 ### Disguise mode
 - Neutral app name and icon (for example a notes app), quiet notifications, a quick-hide gesture and a decoy screen, because a trafficker may check the phone.
+- MVP: a separate **disguised build**, called "Ghi chú+" with a notes icon from the moment it is installed (the `development-disguise` EAS profile, `APP_VARIANT=disguise`). iOS can't rename an app at runtime, so this is also how the name works there. The splash screen has no logo, the permission prompts don't say what the app is for, Settings doesn't name Cage or the disguise, and sign-in code messages never name Cage.
+- Not yet: switching the icon and name while the app runs (Android `activity-alias`, an alternate icon on iOS), which needs a native module that hasn't been tried on a real phone; the quick-hide gesture; and the decoy screen. Until the decoy screen exists, words inside the app (for example "Cage sẽ hỏi bạn ngay") still say Cage once the app is open.
 
 ### Pre-trip check (post-MVP)
 - Before a long or cross-border trip: who arranged it, does the user hold their own passport, is the employer real. Cage flags common scam signs.
@@ -155,6 +157,9 @@ The MVP proves the journey loop works and that people trust its alerts.
 
 | Question | Current suggestion |
 | --- | --- |
+| Does iOS show "Ghi chú+" from install in the disguised build? | Assumed yes, since iOS can change the icon but not the name at runtime. Jaden to confirm (#26). |
+| How does the traveller get past the decoy screen in disguise mode, once it exists? | A gesture or the safe code; decide and record it here when the decoy screen is built (#26, ADR 0002). |
+| What name does the SMS and Zalo sender show? | A registered sender called "Cage" would show on the phone of someone in disguise mode, so check it when the brandname is registered ([docs/messaging.md](messaging.md)). |
 | Keep the name "Cage"? | Keep it as the brand but never show it on the phone in disguise mode. Test with Vietnamese users, since "cage" can read as trapped. |
 | Which NGOs and hotlines? | Use 111 as the default hotline: since Decree 162/2025 it is also the national anti-trafficking line, 24/7. Contact Blue Dragon and Pacific Links before listing them. Start by showing numbers to the circle; build direct alerts once one NGO signs a data sharing agreement. See [hotlines.md](hotlines.md). |
 | Must Cage store data in Vietnam? | Ask a lawyer whether the 2025 Cybersecurity Law covers Cage. Cloudflare can't keep data in Vietnam, so a yes changes ADR 0001. See [privacy-review.md](privacy-review.md). |

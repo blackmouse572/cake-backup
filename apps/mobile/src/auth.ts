@@ -1,6 +1,7 @@
 import { expoClient } from "@better-auth/expo/client";
 import { createAuthClient } from "better-auth/react";
 import { phoneNumberClient } from "better-auth/client/plugins";
+import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 
 /** The API's address. Set EXPO_PUBLIC_API_URL for a device; localhost works in a simulator. */
@@ -12,6 +13,14 @@ export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8787
  * more often, so the stage keeps up with the demo dashboard.
  */
 export const DEMO = process.env.EXPO_PUBLIC_DEMO === "on";
+
+/**
+ * The disguised build (the `development-disguise` profile, APP_VARIANT=disguise):
+ * called "Ghi chú+" on the home screen, and its settings don't name Cage or
+ * the disguise. The flag comes from the same configuration that renames
+ * the app (`disguise.config.ts`), so the two can't disagree.
+ */
+export const DISGUISE = Constants.expoConfig?.extra?.disguise === true;
 
 /**
  * Staging sits behind Cloudflare Access (docs/deploy.md).

@@ -12,6 +12,13 @@
         "EXPO_PUBLIC_API_URL": "https://api-staging.cage.vn"
       }
     },
+    "development-disguise": {
+      "extends": "development",
+      "env": {
+        "APP_VARIANT": "disguise",
+        "EXPO_PUBLIC_API_URL": "https://api-staging.cage.vn"
+      }
+    },
     "development-simulator": {
       "extends": "development",
       "ios": {

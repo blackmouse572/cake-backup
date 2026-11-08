@@ -61,6 +61,12 @@ describe("circle messages", () => {
   });
 });
 
+describe("sign-in code messages", () => {
+  it.each(["vi", "en"] as const)("never name Cage in %s, so they read like any verification message and don't give a disguised phone away", (locale) => {
+    expect(messageText({ kind: "code", code: "123456" }, locale).toLowerCase()).not.toContain("cage");
+  });
+});
+
 describe("displayName", () => {
   it("uses the name when there is one", () => {
     expect(displayName(" Lan ", "+84912345678")).toBe("Lan");

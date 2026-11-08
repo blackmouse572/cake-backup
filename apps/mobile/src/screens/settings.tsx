@@ -3,6 +3,7 @@ import { CODE_LENGTH, type Me } from "@cage/shared";
 import { space } from "@cage/ui-tokens";
 import { useEffect, useReducer, useState, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { DISGUISE } from "../auth";
 import { setLocale, useTranslation } from "../i18n";
 import { fetchMe } from "../services/auth.service";
 import { saveSettings, signOutWithCode } from "../services/settings.service";
@@ -162,9 +163,12 @@ function SettingsScreens({ me, onBack, onCircle, onChangeCodes, onSignedOut }: S
             </View>
             {state.problem ? <Note tone="danger">{t("settings.error")}</Note> : null}
 
-            <Section title={t("settings.sections.privacy")}>
-              <Row icon="lock" label={t("settings.disguise")} value={t("settings.soon")} />
-            </Section>
+            {/* The disguised build is already disguised; a "Ngụy trang" row would give it away. */}
+            {DISGUISE ? null : (
+              <Section title={t("settings.sections.privacy")}>
+                <Row icon="lock" label={t("settings.disguise")} value={t("settings.soon")} />
+              </Section>
+            )}
 
             <Section title={t("settings.sections.general")}>
               <Row icon="translate" label={t("settings.language")} value={LOCALE_NAMES[locale]} onPress={() => dispatch({ type: "open", view: "language" })} />
@@ -223,12 +227,17 @@ function LanguageView({ locale, onChoose, onBack }: { locale: Locale; onChoose: 
           );
         })}
       </Section>
-      <Text style={[styles.sectionTitle, { marginTop: space[6] }]}>{t("settings.languageScreen.changes")}</Text>
-      <View style={{ gap: space[3], marginTop: space[2] }}>
-        <IconLine icon="info">{t("settings.languageScreen.app")}</IconLine>
-        <IconLine icon="notifications">{t("settings.languageScreen.messages")}</IconLine>
-        <IconLine icon="lock">{t("settings.languageScreen.disguise")}</IconLine>
-      </View>
+      {/* These lines name Cage and the disguise, so the disguised build leaves them out. */}
+      {DISGUISE ? null : (
+        <>
+          <Text style={[styles.sectionTitle, { marginTop: space[6] }]}>{t("settings.languageScreen.changes")}</Text>
+          <View style={{ gap: space[3], marginTop: space[2] }}>
+            <IconLine icon="info">{t("settings.languageScreen.app")}</IconLine>
+            <IconLine icon="notifications">{t("settings.languageScreen.messages")}</IconLine>
+            <IconLine icon="lock">{t("settings.languageScreen.disguise")}</IconLine>
+          </View>
+        </>
+      )}
     </Screen>
   );
 }
