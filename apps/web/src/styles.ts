@@ -135,7 +135,7 @@ dialog.sheet--over::backdrop{background:rgba(17,17,17,.4)}
 .log{list-style:none}
 .log li{border-top:1px dashed var(--divider)}
 .log li:first-child{border-top:0}
-.log__row{width:100%;display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:8px 6px;margin:0 -4px;border-radius:8px;font:400 14px/20px var(--font-sans);color:var(--fg-primary);text-align:left}
+.log .log__row{width:100%;display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:8px 6px;margin:0 -4px;border-radius:8px;font:400 14px/20px var(--font-sans);color:var(--fg-primary);text-align:left}
 button.log__row{border:0;background:transparent;cursor:pointer}
 button.log__row:hover,button.log__row:focus-visible{background:var(--surface-hover)}
 button.log__row:hover .cd-icon,button.log__row:focus-visible .cd-icon{color:var(--fg-primary)}
